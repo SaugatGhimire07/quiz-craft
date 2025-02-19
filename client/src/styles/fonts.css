@@ -1,0 +1,103 @@
+@font-face {
+  font-family: "HurmeGeometricSans";
+  src: url("../fonts/HurmeGeometricSans1.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "HurmeGeometricSans";
+  src: url("../fonts/HurmeGeometricSans1-Black.otf") format("opentype");
+  font-weight: 900;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "HurmeGeometricSans";
+  src: url("../fonts/HurmeGeometricSans1-BlackOblique.otf") format("opentype");
+  font-weight: 900;
+  font-style: oblique;
+}
+
+@font-face {
+  font-family: "HurmeGeometricSans";
+  src: url("../fonts/HurmeGeometricSans1-Bold.otf") format("opentype");
+  font-weight: bold;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "HurmeGeometricSans";
+  src: url("../fonts/HurmeGeometricSans1-BoldOblique.otf") format("opentype");
+  font-weight: bold;
+  font-style: oblique;
+}
+
+@font-face {
+  font-family: "HurmeGeometricSans";
+  src: url("../fonts/HurmeGeometricSans1-Hairline.otf") format("opentype");
+  font-weight: 100;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "HurmeGeometricSans";
+  src: url("../fonts/HurmeGeometricSans1-HairlineOblique.otf")
+    format("opentype");
+  font-weight: 100;
+  font-style: oblique;
+}
+
+@font-face {
+  font-family: "HurmeGeometricSans";
+  src: url("../fonts/HurmeGeometricSans1-Light.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "HurmeGeometricSans";
+  src: url("../fonts/HurmeGeometricSans1-LightOblique.otf") format("opentype");
+  font-weight: 300;
+  font-style: oblique;
+}
+
+@font-face {
+  font-family: "HurmeGeometricSans";
+  src: url("../fonts/HurmeGeometricSans1-Oblique.otf") format("opentype");
+  font-weight: normal;
+  font-style: oblique;
+}
+
+@font-face {
+  font-family: "HurmeGeometricSans";
+  src: url("../fonts/HurmeGeometricSans1-SemiBold.otf") format("opentype");
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "HurmeGeometricSans";
+  src: url("../fonts/HurmeGeometricSans1-Thin.otf") format("opentype");
+  font-weight: 200;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "HurmeGeometricSans";
+  src: url("../fonts/HurmeGeometricSans1-ThinOblique.otf") format("opentype");
+  font-weight: 200;
+  font-style: oblique;
+}
+
+@font-face {
+  font-family: "HurmeGeometricSans";
+  src: url("../fonts/HurmeGeometricSans1SemiBoldOblique.otf") format("opentype");
+  font-weight: 600;
+  font-style: oblique;
+}
+
+/* Apply the font globally */
+body {
+  font-family: "HurmeGeometricSans", sans-serif;
+}
