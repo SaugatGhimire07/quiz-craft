@@ -9,21 +9,31 @@ const NewPassword = () => {
   const { token } = useParams();
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!password) {
-      setMessage({ text: "Please enter a new password", type: "error" });
+    if (!password || !confirmPassword) {
+      setMessage({ text: "Please fill in all fields", type: "error" });
       return;
     }
 
     if (password.length < 6) {
       setMessage({
         text: "Password must be at least 6 characters long",
+        type: "error",
+      });
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setMessage({
+        text: "Passwords do not match",
         type: "error",
       });
       return;
@@ -89,6 +99,31 @@ const NewPassword = () => {
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? (
+                  <EyeOff className="icon" />
+                ) : (
+                  <Eye className="icon" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="confirmPassword">Confirm Password</label>
+            <div className="password-input">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                id="confirmPassword"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm your new password"
+                disabled={isSubmitting}
+              />
+              <button
+                type="button"
+                className="toggle-password"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                {showConfirmPassword ? (
                   <EyeOff className="icon" />
                 ) : (
                   <Eye className="icon" />

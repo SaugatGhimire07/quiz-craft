@@ -5,6 +5,7 @@ import {
   forgotPassword,
   resetPassword,
   verifyCode,
+  verifyEmail,
 } from "../controllers/authController.js";
 import { body } from "express-validator";
 
@@ -29,5 +30,6 @@ router.post("/login", loginUser);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password/:token", resetPassword);
 router.post("/verify-code", verifyCode);
+router.post("/verify-email", verifyEmail);
 
 export default router;

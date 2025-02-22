@@ -31,8 +31,14 @@ const SignUpPage = () => {
 
     try {
       const response = await api.post("/auth/register", formData);
-      localStorage.setItem("token", response.data.token);
-      navigate("/login"); // Redirect to login page after successful registration
+
+      // Don't store token yet since email is not verified
+      // Navigate to verify-email page with email in state
+      navigate("/verify-email", {
+        state: {
+          email: formData.email,
+        },
+      });
     } catch (error) {
       setError(
         error.response?.data?.message ||

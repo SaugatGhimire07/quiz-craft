@@ -2,22 +2,21 @@
 
 /* Reset browser styles */
 * {
-     margin: 0;
-     padding: 0;
-     box-sizing: border-box;
-     font-family: "Poppins", sans-serif;
- }
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
- /* Disable default browser password toggle */
- input::-ms-reveal,
- input::-ms-clear {
-     display: none;
- }
- input::-webkit-credentials-auto-fill-button {
-     visibility: hidden;
-     display: none;
-     pointer-events: none;
- }
+/* Disable default browser password toggle */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+input::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  display: none;
+  pointer-events: none;
+}
 
 body {
   background-color: #f9fafb;
@@ -27,6 +26,7 @@ body {
   align-items: center;
   justify-content: center;
 }
+
 .signup-container {
   min-height: 100vh;
   display: flex;

@@ -1,23 +1,35 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../api/axios";
-import "../styles/verify-code.css";
+import "../styles/verify-email.css";
 import Logo from "../components/Logo";
+import { useAuth } from "../hooks/useAuth";
 
-const VerifyCode = () => {
+const VerifyEmail = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { updateVerificationStatus } = useAuth();
   const [verificationCode, setVerificationCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
   const email = location.state?.email;
 
-  // Use useEffect for navigation
+  // Use useEffect for navigation instead of conditional return
   useEffect(() => {
     if (!email) {
-      navigate("/reset-password");
+      navigate("/signup");
     }
   }, [email, navigate]);
+
+  useEffect(() => {
+    // Show message from login page if it exists
+    if (location.state?.message) {
+      setMessage({
+        text: location.state.message,
+        type: "info",
+      });
+    }
+  }, [location.state]);
 
   // If no email, render nothing until navigation completes
   if (!email) return null;
@@ -33,45 +45,61 @@ const VerifyCode = () => {
     setMessage({ text: "", type: "" });
 
     try {
-      const response = await api.post("/auth/verify-code", {
+      const response = await api.post("/auth/verify-email", {
         email,
         code: verificationCode,
       });
 
-      if (response.data.resetToken) {
+      if (response.data.token) {
+        localStorage.setItem("token", response.data.token);
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            id: response.data._id,
+            name: response.data.name,
+            email: response.data.email,
+            isVerified: true,
+          })
+        );
+
+        // Update verification status in context
+        updateVerificationStatus(true);
+
         setMessage({
-          text: "Code verified successfully",
+          text: "Email verified successfully",
           type: "success",
         });
 
-        // Navigate with state containing resetToken
+        // Navigate after successful verification
         setTimeout(() => {
-          navigate(`/new-password/${response.data.resetToken}`, {
-            state: { resetToken: response.data.resetToken },
-          });
+          navigate("/");
         }, 2000);
       }
     } catch (error) {
       setMessage({
-        text: error.response?.data?.message || "Invalid verification code",
+        text: error.response?.data?.message || "Failed to verify email",
         type: "error",
       });
-      console.error("Verification error:", {
-        status: error.response?.status,
-        message: error.response?.data?.message,
-      });
+
+      if (error.response?.status === 400) {
+        // Add resend option if code expired
+        setMessage({
+          text: "Verification code expired. Please try registering again.",
+          type: "error",
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="verify-code-container">
+    <div className="verify-email-container">
       <Logo />
-      <div className="verify-code-card">
-        <h1 className="verify-code-title">Enter Verification Code</h1>
-        <p className="verify-code-subtitle">
-          We&apos;ve sent a verification code to <strong>{email}</strong>
+      <div className="verify-email-card">
+        <h1 className="verify-email-title">Verify Your Email</h1>
+        <p className="verify-email-subtitle">
+          Please enter the verification code sent to <strong>{email}</strong>
         </p>
 
         {message.text && (
@@ -80,7 +108,7 @@ const VerifyCode = () => {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="code">Verification Code to reset password</label>
+            <label htmlFor="code">Verification Code</label>
             <input
               type="text"
               id="code"
@@ -97,16 +125,13 @@ const VerifyCode = () => {
             className="verify-button"
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Verifying..." : "Verify Code"}
+            {isSubmitting ? "Verifying..." : "Verify Email"}
           </button>
         </form>
 
         <div className="resend-link">
           <span>Didn&apos;t receive the code?</span>
-          <button
-            onClick={() => navigate("/reset-password")}
-            className="resend-button"
-          >
+          <button onClick={() => navigate("/signup")} className="resend-button">
             Try again
           </button>
         </div>
@@ -115,4 +140,4 @@ const VerifyCode = () => {
   );
 };
 
-export default VerifyCode;
+export default VerifyEmail;
