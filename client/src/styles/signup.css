@@ -1,3 +1,24 @@
+@import url("../styles/fonts.css");
+
+/* Reset browser styles */
+* {
+     margin: 0;
+     padding: 0;
+     box-sizing: border-box;
+     font-family: "Poppins", sans-serif;
+ }
+
+ /* Disable default browser password toggle */
+ input::-ms-reveal,
+ input::-ms-clear {
+     display: none;
+ }
+ input::-webkit-credentials-auto-fill-button {
+     visibility: hidden;
+     display: none;
+     pointer-events: none;
+ }
+
 body {
   background-color: #f9fafb;
   height: 100%;
@@ -162,6 +183,10 @@ body {
   font-size: 0.75rem;
   color: #6b7280;
   margin-top: 0.25rem;
+}
+
+.password-toggle:focus {
+  outline: none;
 }
 
 .signup-button {

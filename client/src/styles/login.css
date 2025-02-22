@@ -1,5 +1,16 @@
 @import url("../styles/fonts.css");
 
+ /* Disable default browser password toggle */
+ input::-ms-reveal,
+ input::-ms-clear {
+     display: none;
+ }
+ input::-webkit-credentials-auto-fill-button {
+     visibility: hidden;
+     display: none;
+     pointer-events: none;
+ }
+
 .login-container {
   display: flex;
   flex-direction: column;
@@ -136,6 +147,10 @@
   padding: 0;
   cursor: pointer;
   color: #666;
+}
+
+.toggle-password:focus {
+  outline: none;
 }
 
 .icon {
