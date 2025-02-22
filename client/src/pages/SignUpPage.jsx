@@ -27,13 +27,19 @@ const SignUpPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    // Add password validation
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters long");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const response = await api.post("/auth/register", formData);
 
       // Don't store token yet since email is not verified
-      // Navigate to verify-email page with email in state
       navigate("/verify-email", {
         state: {
           email: formData.email,
@@ -106,6 +112,8 @@ const SignUpPage = () => {
                 value={formData.password}
                 onChange={handleChange}
                 required
+                minLength={8}
+                placeholder="At least 8 characters"
               />
               <button
                 type="button"
@@ -119,7 +127,9 @@ const SignUpPage = () => {
                 )}
               </button>
             </div>
-            <p className="password-hint">At least 8 characters</p>
+            <p className="password-hint">
+              Password must be at least 8 characters long
+            </p>
           </div>
 
           <button type="submit" className="signup-button" disabled={loading}>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import api from "../api/axios";
 import "../styles/verify-email.css";
 import Logo from "../components/Logo";
@@ -130,10 +130,8 @@ const VerifyEmail = () => {
         </form>
 
         <div className="resend-link">
-          <span>Didn&apos;t receive the code?</span>
-          <button onClick={() => navigate("/signup")} className="resend-button">
-            Try again
-          </button>
+          <span>Didn&apos;t receive the code?</span>{" "}
+          <Link to="/login">Try Again</Link>
         </div>
       </div>
     </div>

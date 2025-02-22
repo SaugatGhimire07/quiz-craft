@@ -58,19 +58,17 @@
   margin-top: 20px;
   text-align: center;
   font-size: 14px;
+  color: #1a1a1a;
 }
 
-.resend-button {
-  background: none;
-  border: none;
-  color: #3182ce;
-  cursor: pointer;
-  padding: 0;
-  margin-left: 5px;
-  font-size: 14px;
+.resend-link a {
+  color: #111827;
+  font-weight: 600;
+  text-decoration: none;
+  margin-left: 0.25rem;
 }
 
-.resend-button:hover {
+.resend-link a:hover {
   text-decoration: underline;
 }
 

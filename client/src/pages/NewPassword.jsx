@@ -23,9 +23,9 @@ const NewPassword = () => {
       return;
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       setMessage({
-        text: "Password must be at least 6 characters long",
+        text: "Password must be at least 8 characters long",
         type: "error",
       });
       return;
@@ -92,6 +92,7 @@ const NewPassword = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your new password"
                 disabled={isSubmitting}
+                minLength={8} // Add minLength attribute
               />
               <button
                 type="button"
@@ -105,6 +106,10 @@ const NewPassword = () => {
                 )}
               </button>
             </div>
+            <p className="password-hint">
+              Password must be at least 8 characters long
+            </p>{" "}
+            {/* Add password hint */}
           </div>
 
           <div className="form-group">
