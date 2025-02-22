@@ -4,6 +4,7 @@ import { useNavigate, Link } from "react-router-dom";
 import api from "../api/axios";
 import "../styles/login.css";
 import "../styles/fonts.css";
+import Logo from "../components/Logo";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -58,6 +59,7 @@ const LoginPage = () => {
 
   return (
     <div className="login-container">
+      <Logo />
       <div className="login-box">
         <div className="login-header">
           <h1>Log in to your Quiz Craft account</h1>
@@ -107,9 +109,9 @@ const LoginPage = () => {
           </button>
 
           <div className="form-links">
-            <a href="#" className="forgot-password">
+            <Link to="/reset-password" className="forgot-password">
               Forgot password?
-            </a>
+            </Link>
           </div>
         </form>
 

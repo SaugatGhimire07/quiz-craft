@@ -1,17 +1,18 @@
 @import url("../styles/fonts.css");
 
 .login-container {
-  min-height: 100vh;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
-  padding: 1rem;
+  align-items: center;
+  min-height: 100vh;
+  padding: 2rem;
   font-family: "HurmeGeometricSans", sans-serif;
 }
 
 .login-box {
-  max-width: 400px;
   width: 100%;
+  max-width: 400px;
   background: white;
   border-radius: 8px;
   padding: 2rem;
@@ -101,7 +102,7 @@
 
 .form-group label {
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: bold;
   color: #333;
   font-family: "HurmeGeometricSans", sans-serif;
 }
@@ -145,18 +146,19 @@
 .login-button {
   width: 100%;
   padding: 0.75rem;
-  background-color: #333;
+  background-color: #5e17eb;
   color: white;
   border: none;
   border-radius: 4px;
-  font-weight: 500;
+  font-weight: bold;
   cursor: pointer;
   transition: background-color 0.2s;
   font-family: "HurmeGeometricSans", sans-serif;
+  border-radius: 9999px;
 }
 
 .login-button:hover {
-  background-color: #222;
+  background-color: #5109e0;
 }
 
 .login-button:disabled {
@@ -172,6 +174,7 @@
 
 .form-links a {
   color: #666;
+  font-weight: bold;
   text-decoration: none;
   font-family: "HurmeGeometricSans", sans-serif;
 }

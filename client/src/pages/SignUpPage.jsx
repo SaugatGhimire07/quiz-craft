@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import api from "../api/axios";
 import "../styles/signup.css";
 import "../styles/fonts.css";
+import Logo from "../components/Logo";
 
 const SignUpPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -15,6 +17,12 @@ const SignUpPage = () => {
     email: "",
     password: "",
   });
+
+  useEffect(() => {
+    if (location.state?.message) {
+      setError(location.state.message);
+    }
+  }, [location]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,6 +53,7 @@ const SignUpPage = () => {
 
   return (
     <div className="signup-container">
+      <Logo />
       <div className="signup-box">
         <div className="signup-header">
           <h1>Create a free account</h1>
