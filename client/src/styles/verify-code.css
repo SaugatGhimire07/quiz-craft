@@ -1,0 +1,75 @@
+.verify-code-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.verify-code-card {
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  max-width: 450px;
+  padding: 40px 30px;
+}
+
+.verify-code-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1a1a1a;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.verify-code-subtitle {
+  text-align: center;
+  color: #4a4a4a;
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+
+.verify-button {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #5e17eb;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-family: "HurmeGeometricSans", sans-serif;
+  border-radius: 9999px;
+}
+
+.verify-button:hover {
+  background-color: #5109e0;
+}
+
+.verify-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.resend-link {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.resend-button {
+  background: none;
+  border: none;
+  color: #3182ce;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 5px;
+  font-size: 14px;
+}
+
+.resend-button:hover {
+  text-decoration: underline;
+}

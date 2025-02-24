@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import api from "../api/axios";
 import "../styles/signup.css";
 import "../styles/fonts.css";
+import Logo from "../components/Logo";
 
 const SignUpPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,15 +18,33 @@ const SignUpPage = () => {
     password: "",
   });
 
+  useEffect(() => {
+    if (location.state?.message) {
+      setError(location.state.message);
+    }
+  }, [location]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    // Add password validation
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters long");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const response = await api.post("/auth/register", formData);
-      localStorage.setItem("token", response.data.token);
-      navigate("/login"); // Redirect to login page after successful registration
+
+      // Don't store token yet since email is not verified
+      navigate("/verify-email", {
+        state: {
+          email: formData.email,
+        },
+      });
     } catch (error) {
       setError(
         error.response?.data?.message ||
@@ -45,6 +65,7 @@ const SignUpPage = () => {
 
   return (
     <div className="signup-container">
+      <Logo />
       <div className="signup-box">
         <div className="signup-header">
           <h1>Create a free account</h1>
@@ -91,6 +112,8 @@ const SignUpPage = () => {
                 value={formData.password}
                 onChange={handleChange}
                 required
+                minLength={8}
+                placeholder="At least 8 characters"
               />
               <button
                 type="button"
@@ -104,7 +127,9 @@ const SignUpPage = () => {
                 )}
               </button>
             </div>
-            <p className="password-hint">At least 8 characters</p>
+            <p className="password-hint">
+              Password must be at least 8 characters long
+            </p>
           </div>
 
           <button type="submit" className="signup-button" disabled={loading}>

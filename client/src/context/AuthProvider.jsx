@@ -15,8 +15,12 @@ const AuthProvider = ({ children }) => {
   }, []);
 
   const login = (userData) => {
-    setUser(userData);
-    localStorage.setItem("user", JSON.stringify(userData));
+    const userWithVerification = {
+      ...userData,
+      isVerified: userData.isVerified || false,
+    };
+    setUser(userWithVerification);
+    localStorage.setItem("user", JSON.stringify(userWithVerification));
   };
 
   const logout = () => {
@@ -25,8 +29,25 @@ const AuthProvider = ({ children }) => {
     localStorage.removeItem("token");
   };
 
+  // Add verification status update method
+  const updateVerificationStatus = (isVerified) => {
+    if (user) {
+      const updatedUser = { ...user, isVerified };
+      setUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        logout,
+        loading,
+        updateVerificationStatus,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
