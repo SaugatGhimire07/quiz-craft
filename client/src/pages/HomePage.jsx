@@ -1,52 +1,42 @@
 import React from "react";
-
 import Img_study from "../assets/Home/landing_study_pic.png";
-
 import Create from "../assets/Home/create_img.jpg";
 import Play from "../assets/Home/play_img.jpg";
 import Review from "../assets/Home/review_img.jpg";
-
 import Children from "../assets/Home/children.jpg";
-//Css 
 import "../styles/home.css";
 
 const HomePage = () => {
   return (
     <div className="container">
         <div className="header-container">
-      <h1 className="header">Create, Play and Learn with Interactive Quizzes!</h1>
-      <p className="header-text">Empower your learning with fun, customizable quizzes tailored for students and educators alike</p>
-    </div>
-
-    <div className="bottom-container">
-       <button className="button">Get Started</button>
-    </div>
-
-    <div className="img-container">
-        <div className="img_Style">   
-        <img src={Img_study} style={{width:"1250px" , height:'400px', padding:'0px'}}/>
-
-    </div>
-
-    </div>
-
-
-    <div className="text-container">
-        <div className="short-heading">
-            <h5>Why you'll love QuizCraft</h5>
+            <h1 className="header">Create, Play and Learn with Interactive Quizzes!</h1>
+            <p className="header-text">Empower your learning with fun, customizable quizzes tailored for students and educators alike</p>
         </div>
-        <div className="heading-2">
-            <h1 style={{fontWeight:'600'}}>From Fun Quizzes to Powerful Learning</h1>
-            </div>
 
+        <div className="bottom-container">
+            <button className="button">Get Started</button>
+        </div>
+        <div className="img-container">
+            <div className="img_Style">   
+            <img src={Img_study} style={{width:'1250px' , height:'400px', padding:'0px'}}/>
+            </div>
+        </div>
+
+        <div className="text-container">
+            <div className="short-heading">
+                <h5>Why you'll love QuizCraft</h5>
+            </div>
+            <div className="heading-2">
+                <h1 style={{fontWeight:'600'}}>From Fun Quizzes to Powerful Learning</h1>
+            </div>
             <div className="para-2">
                 <p>Quizcraft makes learning interactive, engaging, and effective. Whether you're hosting a fun trivia game or an educational quiz, everyone can participate, learn, and grow at their own pace.</p>
             </div>
-           
         </div>
 
-    <div className="desc-container">
-        <ul className="desc_points">
+        <div className="desc-container">
+            <ul className="desc_points">
                 <li>
                 🎯 Easy Quiz Creation
                 </li>
@@ -62,12 +52,12 @@ const HomePage = () => {
             </ul>
         </div>
     
-    <div className="text-container">
-    <div className="short-heading">
-            <h5>How it works</h5>
-        </div>
-        <div className="heading-2">
-            <h1 style={{fontWeight:'600'}}>Get started in 3 steps</h1>
+        <div className="text-container">
+            <div className="short-heading">
+                <h5>How it works</h5>
+            </div>
+            <div className="heading-2">
+                <h1 style={{fontWeight:'600'}}>Get started in 3 steps</h1>
             </div>
             <div className="para-2">
                 <p>Quizcraft helps you create, play, and review—let's see how!</p>
@@ -81,8 +71,6 @@ const HomePage = () => {
                 <div className="feature-image pink">
                     <span className="number number-one"></span>
                     <span className="design1 pink1"></span>
-                    {/* <div class="curve-box" style="transform: matrix(1, 0.2, -0.2, 1, 0, 0);"></div> */}
-
                     <img src={Create} alt="Person typing on laptop" className="feature-img" />
                 </div>
                 <p>Whether you're crafting a coding challenge or a fun trivia quiz, Quizcraft has you covered. Create your quiz in seconds!</p>
@@ -110,7 +98,7 @@ const HomePage = () => {
         </div>
 
 
-<div className="last-container">
+        <div className="last-container">
             {/* Left Image Container */}
             <div className="left_img_container">
                 <div className="img-wrapper">
@@ -131,15 +119,7 @@ const HomePage = () => {
                 <button className="learn-more-btn">Learn More</button>
             </div>
         </div>
-
-
-
-
-
     </div>
-
-    
-
   );
 };
 

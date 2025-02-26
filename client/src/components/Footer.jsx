@@ -15,11 +15,21 @@ const Footer = () => {
                     <img src={logo} alt="Quiz Craft Logo" className="footer-logo" />
                     <p style={{marginTop:'100px' , marginBottom:'10px'}}>Follow us</p>
                     <div className="social-icons">
-                        <FaLinkedin />
-                        <FaYoutube />
-                        <FaInstagram />
-                        <FaFacebook />
-                        <FaTwitter />
+                        <a href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer">
+                            <FaLinkedin />
+                        </a>
+                        <a href="https://www.youtube.com" target="_blank" rel="noopener noreferrer">
+                            <FaYoutube />
+                        </a>
+                        <a href="https://www.instagram.com" target="_blank" rel="noopener noreferrer">
+                            <FaInstagram />
+                        </a>
+                        <a href="https://www.facebook.com" target="_blank" rel="noopener noreferrer">
+                            <FaFacebook />
+                        </a>
+                        <a href="https://www.twitter.com" target="_blank" rel="noopener noreferrer">
+                            <FaTwitter />
+                        </a>
                     </div>
                 </div>
 
@@ -52,7 +62,7 @@ const Footer = () => {
                     <h3>Legal</h3>
                     <ul>
                         <li><a href="/privacy-policy">Privacy Policy</a></li>
-                        <li><a href="/terms">Terms of Service</a></li>
+                        <li><a href="/terms-of-service">Terms of Service</a></li>
                         <li><a href="/cookie-policy">Cookie Policy</a></li>
                     </ul>
                 </div>

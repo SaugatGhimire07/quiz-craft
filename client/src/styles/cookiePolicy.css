@@ -1,0 +1,41 @@
+@import url("../styles/fonts.css");
+
+.cookie-policy {
+  padding: 2rem;
+  color: #111827;
+  font-family: "HurmeGeometricSans", sans-serif;
+}
+
+.cookie-policy h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.cookie-policy h2 {
+  font-size: 1.75rem;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.cookie-policy p {
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.cookie-policy p a {
+  color: #333;
+  font-weight: 600;
+}
+
+.cookie-policy p a:hover {
+  text-decoration: underline;
+}
+
+.cookie-policy ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+}
+
+.cookie-policy ul li {
+  margin-bottom: 0.5rem;
+}
