@@ -1,7 +1,7 @@
 import React from "react";
 import "../styles/footer.css";
 
-import logo from "../assets/Logo/logo.png";
+import logo from "../assets/logo/logo.png";
 
 // Import social media icons (you can replace these with actual images or Font Awesome)
 import { FaLinkedin, FaYoutube, FaInstagram, FaFacebook, FaTwitter } from "react-icons/fa";
