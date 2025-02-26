@@ -2,7 +2,6 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import ProtectedRoute from "../components/ProtectedRoute";
 
-
 //Screens
 import SignUpPage from "../pages/SignUpPage";
 import LoginPage from "../pages/LoginPage";
@@ -14,7 +13,7 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import NewPassword from "../pages/NewPassword";
 import VerifyCode from "../pages/VerifyCode";
 import VerifyEmail from "../pages/VerifyEmail";
-
+import AccountSettings from "../pages/AccountSettings";
 
 const AppRoutes = () => {
   return (
@@ -58,6 +57,8 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
+
+        <Route path="/profile" element={<AccountSettings />} />
       </Routes>
     </Router>
   );
