@@ -8,7 +8,7 @@ import "../styles/home.css";
 
 const HomePage = () => {
   return (
-    <div className="container">
+    <div className="container-home">
         <div className="header-container">
             <h1 className="header">Create, Play and Learn with Interactive Quizzes!</h1>
             <p className="header-text">Empower your learning with fun, customizable quizzes tailored for students and educators alike</p>
