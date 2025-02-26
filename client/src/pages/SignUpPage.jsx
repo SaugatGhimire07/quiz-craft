@@ -64,6 +64,7 @@ const SignUpPage = () => {
   };
 
   return (
+    <div className="signup-body">
     <div className="signup-container">
       <Logo />
       <div className="signup-box">
@@ -146,6 +147,7 @@ const SignUpPage = () => {
           <span>Already have an account?</span> <Link to="/login">Log in</Link>
         </div>
       </div>
+    </div>
     </div>
   );
 };

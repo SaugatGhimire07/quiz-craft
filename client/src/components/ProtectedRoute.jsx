@@ -14,6 +14,10 @@ const ProtectedRoute = ({
     return <div>Loading...</div>;
   }
 
+
+  if (!user) {
+    return <Navigate to="/home" />;
+
   // For routes that require authentication
   if (requireAuth) {
     if (!user) {
@@ -34,6 +38,7 @@ const ProtectedRoute = ({
     if (!hasRequiredState) {
       return <Navigate to="/login" />;
     }
+
   }
 
   return children;
