@@ -2,7 +2,7 @@ import React from 'react';
 import "../styles/navbar.css";
 
 //logo 
-import logo from "../assets/Logo/logo-1.png";
+import logo from "../assets/Logo/logo.png";
 
 const NavBar = () => {
   return (
