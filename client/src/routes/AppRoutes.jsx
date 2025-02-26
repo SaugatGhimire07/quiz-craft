@@ -12,7 +12,7 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import NewPassword from "../pages/NewPassword";
 import VerifyCode from "../pages/VerifyCode";
 import VerifyEmail from "../pages/VerifyEmail";
-
+import AccountSettings from "../pages/AccountSettings";
 
 const AppRoutes = () => {
   return (
@@ -21,7 +21,7 @@ const AppRoutes = () => {
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<HomePage />} />
-        <Route path="/about" element={<AboutPage/>} />
+        <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-of-service" element={<Terms />} />
@@ -59,6 +59,7 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
+        <Route path="/profile" element={<AccountSettings />} />
       </Routes>
     </Router>
   );
