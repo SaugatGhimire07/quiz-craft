@@ -1,5 +1,12 @@
 import express from "express";
-import { registerUser, loginUser } from "../controllers/authController.js";
+import {
+  registerUser,
+  loginUser,
+  forgotPassword,
+  resetPassword,
+  verifyCode,
+  verifyEmail,
+} from "../controllers/authController.js";
 import { body } from "express-validator";
 
 const router = express.Router();
@@ -19,5 +26,10 @@ router.post(
 
 // User Login Route
 router.post("/login", loginUser);
+
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password/:token", resetPassword);
+router.post("/verify-code", verifyCode);
+router.post("/verify-email", verifyEmail);
 
 export default router;

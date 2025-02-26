@@ -2,6 +2,7 @@
   "name": "server",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js"
@@ -11,6 +12,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@sendgrid/mail": "^8.1.4",
     "bcryptjs": "^3.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
