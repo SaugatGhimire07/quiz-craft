@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "./config/database.js";
 import authRoutes from "./routes/authRoutes.js";
+import contactRoutes from "./routes/contactRoutes.js";
 
 dotenv.config(); // Load environment variables
 
@@ -14,6 +15,7 @@ app.use(express.json());
 connectDB();
 
 app.use("/api/auth", authRoutes);
+app.use("/api", contactRoutes);
 app.get("/", (req, res) => res.send("API is running..."));
 
 const PORT = process.env.PORT || 5001;

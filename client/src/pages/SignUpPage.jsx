@@ -139,8 +139,8 @@ const SignUpPage = () => {
         </form>
 
         <p className="terms">
-          By signing up you accept our <a href="#">terms of use</a> and{" "}
-          <a href="#">policies</a>
+          By signing up you accept our <a href="/terms-of-service">terms of use</a> and{" "}
+          <a href="/privacy-policy">policies</a>
         </p>
 
         <div className="login-link">
