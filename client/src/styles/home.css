@@ -68,7 +68,7 @@
     margin-bottom: 30px
 }
 .heading-2{
-    
+    font-size: 600;
     margin-bottom: 10px;    
 }
 .From_heading{
@@ -318,4 +318,27 @@ p {
 .learn-more-btn:hover {
     background-color: black;
     color: white;
+}
+
+
+.Ready-container{
+    text-align: center;
+    width: 100%;
+    height: 40%;
+    padding: 10%;
+    background: #8a8989;
+}
+.Ready-button{
+    width: 30%;
+    background-color: #ffc516;
+    border-radius: 40px;
+    color: white;
+    font-size: 20px;
+    font-weight: bold;
+    padding: 10px;
+    border: none;
+    cursor: pointer;
+    margin-top: 10px;
+    
+    text-align: center;
 }
