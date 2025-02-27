@@ -8,7 +8,7 @@ import "../styles/home.css";
 
 const HomePage = () => {
   return (
-    <div className="container">
+    <div className="container-home">
         <div className="header-container">
             <h1 className="header">Create, Play and Learn with Interactive Quizzes!</h1>
             <p className="header-text">Empower your learning with fun, customizable quizzes tailored for students and educators alike</p>
@@ -19,7 +19,7 @@ const HomePage = () => {
         </div>
         <div className="img-container">
             <div className="img_Style">   
-            <img src={Img_study} style={{width:'1250px' , height:'400px', padding:'0px'}}/>
+            <img src={Img_study} style={{width:'100%' , height:'400px', padding:'0px'}}/>
             </div>
         </div>
 
@@ -28,7 +28,7 @@ const HomePage = () => {
                 <h5>Why you'll love QuizCraft</h5>
             </div>
             <div className="heading-2">
-                <h1 style={{fontWeight:'600'}}>From Fun Quizzes to Powerful Learning</h1>
+                <h1 style={{fontWeight:'600', fontSize:'40px', textShadow:"2px 2px 5px #000000" ,fontFamily:"Hurme Geometric Sans 1"}}>From Fun Quizzes to Powerful Learning</h1>
             </div>
             <div className="para-2">
                 <p>Quizcraft makes learning interactive, engaging, and effective. Whether you're hosting a fun trivia game or an educational quiz, everyone can participate, learn, and grow at their own pace.</p>
@@ -57,7 +57,7 @@ const HomePage = () => {
                 <h5>How it works</h5>
             </div>
             <div className="heading-2">
-                <h1 style={{fontWeight:'600'}}>Get started in 3 steps</h1>
+                <h1 style={{fontWeight:'600', fontSize:'40px'}}>Get started in 3 steps</h1>
             </div>
             <div className="para-2">
                 <p>Quizcraft helps you create, play, and review—let's see how!</p>
@@ -119,6 +119,16 @@ const HomePage = () => {
                 <button className="learn-more-btn">Learn More</button>
             </div>
         </div>
+
+        <div className="Ready-container">
+            <div className="Ready-heading">
+                <h1>Ready to get started?</h1>
+                </div>
+            <div className="Ready-button-container">
+                <button className="Ready-button">Get Started</button>
+                </div>
+
+            </div>
     </div>
   );
 };
