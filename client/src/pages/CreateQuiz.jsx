@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import api from "../api/axios";
 import "../styles/createQuiz.css";
+import { FaEdit, FaSave, FaTrash } from "react-icons/fa"; // Import icons from react-icons
 
 const CreateQuiz = () => {
   const [title, setTitle] = useState("");
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [questions, setQuestions] = useState([
     {
       questionText: "",
@@ -11,29 +13,14 @@ const CreateQuiz = () => {
       correctOption: "",
       type: "multiple-choice",
       timer: 30,
+      image: "",
     },
   ]);
   const [selectedQuestionIndex, setSelectedQuestionIndex] = useState(0);
 
   const handleQuestionChange = (index, field, value) => {
     const newQuestions = [...questions];
-
-    if (field === "type") {
-      newQuestions[index].type = value;
-
-      // Adjust options based on question type
-      if (value === "true-false") {
-        newQuestions[index].options = ["True", "False"];
-      } else {
-        newQuestions[index].options = ["", "", "", ""];
-      }
-
-      // Reset correctOption to avoid incorrect values
-      newQuestions[index].correctOption = "";
-    } else {
-      newQuestions[index][field] = value;
-    }
-
+    newQuestions[index][field] = value;
     setQuestions(newQuestions);
   };
 
@@ -52,9 +39,31 @@ const CreateQuiz = () => {
         correctOption: "",
         type: "multiple-choice",
         timer: 30,
+        image: "",
       },
     ]);
     setSelectedQuestionIndex(questions.length);
+  };
+
+  const handleImageChange = (e, questionIndex) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const newQuestions = [...questions];
+        newQuestions[questionIndex].image = reader.result;
+        setQuestions(newQuestions);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const deleteQuestion = (index) => {
+    const newQuestions = questions.filter((_, i) => i !== index);
+    setQuestions(newQuestions);
+    if (selectedQuestionIndex >= newQuestions.length) {
+      setSelectedQuestionIndex(newQuestions.length - 1);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -62,7 +71,9 @@ const CreateQuiz = () => {
     try {
       const response = await api.post("/quiz/create", { title, questions });
       if (response.status === 201) {
-        alert(`Quiz created successfully! Your quiz code is: ${response.data.code}`);
+        alert(
+          `Quiz created successfully! Your quiz code is: ${response.data.code}`
+        );
         setTitle("");
         setQuestions([
           {
@@ -71,6 +82,7 @@ const CreateQuiz = () => {
             correctOption: "",
             type: "multiple-choice",
             timer: 30,
+            image: "",
           },
         ]);
         setSelectedQuestionIndex(0);
@@ -85,26 +97,69 @@ const CreateQuiz = () => {
   return (
     <div className="create-quiz">
       <div className="header">
-        <button type="button" onClick={addQuestion}>Add Slide</button>
-        <input
-          type="text"
-          placeholder="Quiz Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-        />
-        <button type="submit" onClick={handleSubmit}>Create Quiz</button>
+        <div className="quiz-title-container">
+          {isEditingTitle ? (
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="quiz-title-input"
+              placeholder="Enter Quiz Title" // Added placeholder
+            />
+          ) : (
+            <h1>{title || "Untitled Quiz"}</h1> // Fallback if title is empty
+          )}
+          <button
+            className="edit-title-btn"
+            onClick={() => setIsEditingTitle(!isEditingTitle)}
+          >
+            {isEditingTitle ? <FaSave /> : <FaEdit />}
+          </button>
+        </div>
+        <button
+          type="submit"
+          className="create-quiz-btn"
+          onClick={handleSubmit}
+        >
+          Create Quiz
+        </button>
       </div>
       <div className="create-quiz-content">
         <div className="sidebar left-sidebar">
+          <button type="button" className="new-slide-btn" onClick={addQuestion}>
+            + New Slide
+          </button>
           <ul>
             {questions.map((question, index) => (
               <li
                 key={index}
-                className={index === selectedQuestionIndex ? "active" : ""}
+                className={`slide-preview ${
+                  index === selectedQuestionIndex ? "active" : ""
+                }`}
                 onClick={() => setSelectedQuestionIndex(index)}
               >
-                Slide {index + 1}
+                <div className="slide-content">
+                  <h4>Slide {index + 1}</h4>
+                  <p className="slide-question">
+                    {question.questionText || "New Question"}
+                  </p>
+                  {question.image && (
+                    <img
+                      src={question.image}
+                      alt="Slide"
+                      className="slide-image"
+                    />
+                  )}
+                </div>
+                <button
+                  className="delete-slide-btn"
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent slide selection
+                    deleteQuestion(index);
+                  }}
+                >
+                  <FaTrash />
+                </button>
               </li>
             ))}
           </ul>
@@ -115,10 +170,28 @@ const CreateQuiz = () => {
             <input
               type="text"
               value={questions[selectedQuestionIndex].questionText}
-              onChange={(e) => handleQuestionChange(selectedQuestionIndex, "questionText", e.target.value)}
+              onChange={(e) =>
+                handleQuestionChange(
+                  selectedQuestionIndex,
+                  "questionText",
+                  e.target.value
+                )
+              }
               required
+              placeholder="Enter your question" // Added placeholder
             />
-            
+
+            {/* Image Display Section */}
+            {questions[selectedQuestionIndex].image && (
+              <div className="question-image">
+                <img
+                  src={questions[selectedQuestionIndex].image}
+                  alt="Question"
+                  style={{ maxWidth: "100%", marginTop: "10px" }}
+                />
+              </div>
+            )}
+
             {/* Render options based on question type */}
             {questions[selectedQuestionIndex].type === "true-false" ? (
               <>
@@ -131,8 +204,14 @@ const CreateQuiz = () => {
                   key={oIndex}
                   type="text"
                   value={option}
-                  onChange={(e) => handleOptionChange(selectedQuestionIndex, oIndex, e.target.value)}
-                  placeholder={`Option ${oIndex + 1}`}
+                  onChange={(e) =>
+                    handleOptionChange(
+                      selectedQuestionIndex,
+                      oIndex,
+                      e.target.value
+                    )
+                  }
+                  placeholder={`Option ${oIndex + 1}`} // Added placeholder
                   required
                 />
               ))
@@ -141,13 +220,23 @@ const CreateQuiz = () => {
             <label>Correct Option</label>
             <select
               value={questions[selectedQuestionIndex].correctOption}
-              onChange={(e) => handleQuestionChange(selectedQuestionIndex, "correctOption", e.target.value)}
+              onChange={(e) =>
+                handleQuestionChange(
+                  selectedQuestionIndex,
+                  "correctOption",
+                  e.target.value
+                )
+              }
               required
             >
               <option value="">Select Correct Answer</option>
-              {questions[selectedQuestionIndex].options.map((option, oIndex) => (
-                <option key={oIndex} value={option}>{option}</option>
-              ))}
+              {questions[selectedQuestionIndex].options.map(
+                (option, oIndex) => (
+                  <option key={oIndex} value={option}>
+                    {option}
+                  </option>
+                )
+              )}
             </select>
           </div>
         </div>
@@ -156,7 +245,13 @@ const CreateQuiz = () => {
             <label>Quiz Type</label>
             <select
               value={questions[selectedQuestionIndex].type}
-              onChange={(e) => handleQuestionChange(selectedQuestionIndex, "type", e.target.value)}
+              onChange={(e) =>
+                handleQuestionChange(
+                  selectedQuestionIndex,
+                  "type",
+                  e.target.value
+                )
+              }
             >
               <option value="multiple-choice">Multiple Choice</option>
               <option value="true-false">True/False</option>
@@ -167,8 +262,22 @@ const CreateQuiz = () => {
             <input
               type="number"
               value={questions[selectedQuestionIndex].timer}
-              onChange={(e) => handleQuestionChange(selectedQuestionIndex, "timer", e.target.value)}
+              onChange={(e) =>
+                handleQuestionChange(
+                  selectedQuestionIndex,
+                  "timer",
+                  e.target.value
+                )
+              }
               required
+            />
+          </div>
+          <div className="image-picker">
+            <label>Question Image</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => handleImageChange(e, selectedQuestionIndex)}
             />
           </div>
         </div>
