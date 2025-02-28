@@ -1,7 +1,12 @@
 import { useState } from "react";
 import "../styles/account-settings.css";
 import "../styles/fonts.css";
-import logoImage from "../assets/logo/logo-only.png";
+
+
+//components
+import DashboardNavbar from "../components/DashboardNavbar";
+
+
 
 const AccountSettings = () => {
   const [name, setName] = useState("Saugat Ghimire");
@@ -22,23 +27,7 @@ const AccountSettings = () => {
 
   return (
     <div className="account-settings-container">
-      {/* Header */}
-      <header className="header">
-        <div className="logo">
-          <img src={logoImage} alt="Quiz Craft Logo" width="40" height="30" />
-        </div>
-        <div className="header-right">
-          <div className="avatar-circle">SG</div>
-        </div>
-      </header>
-      <div
-        style={{
-          height: "1px",
-          backgroundColor: "#e5e5e5",
-          width: "100%",
-          marginBottom: "20px",
-        }}
-      ></div>
+      <DashboardNavbar />
 
       <div className="content-container">
         {/* Main content with sidebar */}
