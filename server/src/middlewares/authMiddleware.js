@@ -1,35 +1,27 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
-// Update the auth middleware to check session token
-const authMiddleware = async (req, res, next) => {
+// This middleware function protects routes by requiring authentication
+const protect = async (req, res, next) => {
   let token;
 
-  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer")
+  ) {
     try {
+      // Get token from header
       token = req.headers.authorization.split(" ")[1];
+
+      // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Find user
-      const user = await User.findById(decoded.id).select("-password");
-
-      if (!user) {
-        return res.status(401).json({ message: "User not found" });
-      }
-
-      // Check if session is still valid
-      if (user.sessionToken !== decoded.sessionToken) {
-        return res
-          .status(401)
-          .json({ message: "Session expired. Please log in again." });
-      }
-
-      // Attach user to request object
-      req.user = user;
+      // Get user from the token
+      req.user = await User.findById(decoded.id).select("-password");
 
       next();
     } catch (error) {
-      console.error("Auth middleware error:", error);
+      console.error(error);
       return res.status(401).json({ message: "Not authorized, token failed" });
     }
   } else {
@@ -45,4 +37,5 @@ const admin = (req, res, next) => {
   }
 };
 
+// Use named exports instead of default export
 export { protect, admin };

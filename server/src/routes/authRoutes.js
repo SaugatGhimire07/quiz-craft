@@ -13,7 +13,7 @@ import {
   verifyNewEmail,
 } from "../controllers/authController.js";
 import { body } from "express-validator";
-import authMiddleware from "../middlewares/authMiddleware.js";
+import { protect, admin } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
@@ -39,12 +39,12 @@ router.post("/verify-code", verifyCode);
 router.post("/verify-email", verifyEmail);
 
 // Protected routes
-router.get("/user", authMiddleware, getCurrentUser);
-router.put("/user", authMiddleware, updateUserProfile);
-router.post("/logout-everywhere", authMiddleware, logoutEverywhere);
+router.get("/user", protect, getCurrentUser);
+router.put("/user", protect, updateUserProfile);
+router.post("/logout-everywhere", protect, logoutEverywhere);
 
 // Add these new routes
-router.put("/update-email", authMiddleware, requestEmailChange);
+router.put("/update-email", protect, requestEmailChange);
 router.post("/verify-new-email", verifyNewEmail);
 
 export default router;

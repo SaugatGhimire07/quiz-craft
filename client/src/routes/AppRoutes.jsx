@@ -59,7 +59,6 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
-        <Route path="/profile" element={<AccountSettings />} />
       </Routes>
     </Router>
   );
