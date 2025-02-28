@@ -52,14 +52,13 @@ const AppRoutes = () => {
           }
         />
         <Route
-          path="/"
+          path="/profile"
           element={
-            <ProtectedRoute requireAuth>
-              <h1>Welcome to QuizCraft</h1>
+            <ProtectedRoute requireAuth={true}>
+              <AccountSettings />
             </ProtectedRoute>
           }
         />
-        <Route path="/profile" element={<AccountSettings />} />
       </Routes>
     </Router>
   );

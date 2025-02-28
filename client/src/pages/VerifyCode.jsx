@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../api/axios";
 import "../styles/verify-code.css";
+import "../styles/auth-shared.css";
 import Logo from "../components/Logo";
 
 const VerifyCode = () => {
@@ -66,7 +67,7 @@ const VerifyCode = () => {
   };
 
   return (
-    <div className="verify-code-container">
+    <div className="verify-code-container auth-page">
       <Logo />
       <div className="verify-code-card">
         <h1 className="verify-code-title">Enter Verification Code</h1>
