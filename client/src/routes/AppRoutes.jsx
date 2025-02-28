@@ -13,6 +13,7 @@ import NewPassword from "../pages/NewPassword";
 import VerifyCode from "../pages/VerifyCode";
 import VerifyEmail from "../pages/VerifyEmail";
 import AccountSettings from "../pages/AccountSettings";
+import CreateQuiz from "../pages/CreateQuiz";
 
 const AppRoutes = () => {
   return (
@@ -60,6 +61,7 @@ const AppRoutes = () => {
           }
         />
         <Route path="/profile" element={<AccountSettings />} />
+        <Route path="/create-quiz" element={<CreateQuiz />} />
       </Routes>
     </Router>
   );

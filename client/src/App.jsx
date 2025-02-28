@@ -16,9 +16,7 @@ function App() {
   return (
     
     <AuthProvider>
-      <Navbar/>
       <AppRoutes />
-      <Footer/>
     </AuthProvider>
   );
 }
