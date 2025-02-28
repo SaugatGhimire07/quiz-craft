@@ -4,6 +4,7 @@ import { useNavigate, Link } from "react-router-dom";
 import api from "../api/axios";
 import "../styles/login.css";
 import "../styles/fonts.css";
+import "../styles/auth-shared.css";
 import Logo from "../components/Logo";
 
 const LoginPage = () => {
@@ -75,7 +76,7 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="login-container">
+    <div className="login-container auth-page">
       <Logo />
       <div className="login-box">
         <div className="login-header">

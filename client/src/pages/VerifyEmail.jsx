@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import api from "../api/axios";
 import "../styles/verify-email.css";
+import "../styles/auth-shared.css";
 import Logo from "../components/Logo";
 import { useAuth } from "../hooks/useAuth";
 
@@ -94,7 +95,7 @@ const VerifyEmail = () => {
   };
 
   return (
-    <div className="verify-email-container">
+    <div className="verify-email-container auth-page">
       <Logo />
       <div className="verify-email-card">
         <h1 className="verify-email-title">Verify Your Email</h1>
