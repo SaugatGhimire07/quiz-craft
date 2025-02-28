@@ -1,4 +1,6 @@
 import React from "react";
+
+//images
 import Img_study from "../assets/Home/landing_study_pic.png";
 import Create from "../assets/Home/create_img.jpg";
 import Play from "../assets/Home/play_img.jpg";
@@ -6,9 +8,14 @@ import Review from "../assets/Home/review_img.jpg";
 import Children from "../assets/Home/children.jpg";
 import "../styles/home.css";
 
+//components
+import Navbar from "../components/NavBar";
+import Footer from "../components/Footer";
+
 const HomePage = () => {
   return (
     <div className="container-home">
+         <Navbar/>
         <div className="header-container">
             <h1 className="header">Create, Play and Learn with Interactive Quizzes!</h1>
             <p className="header-text">Empower your learning with fun, customizable quizzes tailored for students and educators alike</p>
@@ -28,7 +35,7 @@ const HomePage = () => {
                 <h5>Why you'll love QuizCraft</h5>
             </div>
             <div className="heading-2">
-                <h1 style={{fontWeight:'600', fontSize:'40px', textShadow:"2px 2px 5px #000000" ,fontFamily:"Hurme Geometric Sans 1"}}>From Fun Quizzes to Powerful Learning</h1>
+                <h1 style={{fontWeight:'600', fontSize:'40px',fontFamily:"Hurme Geometric Sans 1"}}>From Fun Quizzes to Powerful Learning</h1>
             </div>
             <div className="para-2">
                 <p>Quizcraft makes learning interactive, engaging, and effective. Whether you're hosting a fun trivia game or an educational quiz, everyone can participate, learn, and grow at their own pace.</p>
@@ -121,7 +128,9 @@ const HomePage = () => {
         </div>
 
         <div className="Ready-container">
+        <div className="left-style"></div>
             <div className="Ready-heading">
+                
                 <h1>Ready to get started?</h1>
                 </div>
             <div className="Ready-button-container">
@@ -129,6 +138,7 @@ const HomePage = () => {
                 </div>
 
             </div>
+            <Footer/>
     </div>
   );
 };

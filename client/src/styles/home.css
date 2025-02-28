@@ -342,3 +342,16 @@ p {
     
     text-align: center;
 }
+
+
+
+.left-style{
+    background-color: red;
+    clip-path: polygon(14% 68%, 20% 75%, 25% 85%, 29% 100%, 0 100%, 0 62%, 7% 63%);
+    /* width: 100px; */
+    display: block;
+    height: 400px;
+    z-index: 999999;
+    position: relative;
+
+}
