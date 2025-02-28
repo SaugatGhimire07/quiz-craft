@@ -4,6 +4,7 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 import api from "../api/axios";
 import "../styles/signup.css";
 import "../styles/fonts.css";
+import "../styles/auth-shared.css";
 import Logo from "../components/Logo";
 
 const SignUpPage = () => {
@@ -64,8 +65,7 @@ const SignUpPage = () => {
   };
 
   return (
-    <div className="signup-body">
-    <div className="signup-container">
+    <div className="signup-container auth-page">
       <Logo />
       <div className="signup-box">
         <div className="signup-header">

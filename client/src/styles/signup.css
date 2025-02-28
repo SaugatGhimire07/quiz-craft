@@ -3,8 +3,12 @@
 
 @import url("../styles/fonts.css");
 
-/* Reset browser styles */
-* {
+/* Reset browser styles - scope to auth pages */
+.signup-container *,
+.login-container *,
+.verify-email-container *,
+.verify-code-container *,
+.reset-password-container * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -21,17 +25,13 @@ input::-webkit-credentials-auto-fill-button {
   pointer-events: none;
 }
 
-body {
-
+/* Apply styles only to auth pages, not globally to body */
+.signup-container,
+.login-container,
+.verify-email-container,
+.verify-code-container,
+.reset-password-container {
   background-color: #f9fafb;
-  height: 100%;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.signup-container {
   min-height: 100vh;
   display: flex;
   align-items: center;

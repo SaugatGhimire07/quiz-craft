@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import "../styles/reset-password.css";
+import "../styles/auth-shared.css";
 import Logo from "../components/Logo";
 
 const ResetPassword = () => {
@@ -92,7 +93,7 @@ const ResetPassword = () => {
   };
 
   return (
-    <div className="reset-password-container">
+    <div className="reset-password-container auth-page">
       <Logo />
       <div className="reset-password-card">
         <h1 className="reset-password-title">Reset password</h1>
