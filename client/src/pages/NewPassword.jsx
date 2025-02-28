@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import api from "../api/axios";
 import "../styles/reset-password.css";
+import "../styles/auth-shared.css";
 import Logo from "../components/Logo";
 
 const NewPassword = () => {
@@ -72,7 +73,7 @@ const NewPassword = () => {
   };
 
   return (
-    <div className="reset-password-container">
+    <div className="reset-password-container auth-page">
       <Logo />
       <div className="reset-password-card">
         <h1 className="reset-password-title">Set New Password</h1>

@@ -9,8 +9,10 @@ import {
 } from "../utils/emailService.js";
 
 // Generate JWT Token
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+const generateToken = (id, sessionToken) => {
+  return jwt.sign({ id, sessionToken }, process.env.JWT_SECRET, {
+    expiresIn: "30d",
+  });
 };
 
 // @desc   Register new user
@@ -96,12 +98,14 @@ export const loginUser = async (req, res) => {
       });
     }
 
+    const token = generateToken(user._id, user.sessionToken);
+
     res.json({
       _id: user._id,
       name: user.name,
       email: user.email,
       isVerified: user.isVerified,
-      token: generateToken(user._id),
+      token,
     });
   } catch (error) {
     console.error("Login error:", error);
@@ -267,8 +271,8 @@ export const verifyEmail = async (req, res) => {
     user.verificationExpires = undefined;
     await user.save();
 
-    // Generate token
-    const token = generateToken(user._id);
+    // Generate token WITH the session token
+    const token = generateToken(user._id, user.sessionToken);
 
     res.json({
       _id: user._id,
@@ -281,5 +285,207 @@ export const verifyEmail = async (req, res) => {
   } catch (error) {
     console.error("Email verification error:", error);
     res.status(500).json({ message: "Failed to verify email" });
+  }
+};
+
+// @desc   Get current user profile
+// @route  GET /api/auth/user
+// @access Private
+export const getCurrentUser = async (req, res) => {
+  try {
+    // req.user is set from the auth middleware
+    const user = await User.findById(req.user._id).select(
+      "-password -verificationCode -resetPasswordToken -resetPasswordExpire -verificationExpires"
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error("Get user profile error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// @desc   Update user profile
+// @route  PUT /api/auth/user
+// @access Private
+export const updateUserProfile = async (req, res) => {
+  try {
+    const { name, email, password, currentPassword, newPassword } = req.body;
+
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Handle name update
+    if (name) user.name = name;
+
+    // Handle email update with password verification
+    if (email && password) {
+      // Verify the provided password
+      const passwordMatch = await user.matchPassword(password);
+      if (!passwordMatch) {
+        return res.status(401).json({ message: "Incorrect password" });
+      }
+
+      // Check if email is already in use by another account
+      const emailExists = await User.findOne({ email });
+      if (emailExists && emailExists._id.toString() !== user._id.toString()) {
+        return res.status(400).json({ message: "Email is already in use" });
+      }
+
+      user.email = email;
+    }
+
+    // Handle password update
+    if (currentPassword && newPassword) {
+      // Verify current password
+      const passwordMatch = await user.matchPassword(currentPassword);
+      if (!passwordMatch) {
+        return res
+          .status(401)
+          .json({ message: "Current password is incorrect" });
+      }
+
+      // Set new password (will be hashed by pre-save hook)
+      user.password = newPassword;
+    }
+
+    await user.save();
+
+    // Return updated user info (without sensitive fields)
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      isVerified: user.isVerified,
+    });
+  } catch (error) {
+    console.error("Update user profile error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// @desc   Request email change
+// @route  PUT /auth/update-email
+// @access Private
+export const requestEmailChange = async (req, res) => {
+  try {
+    const { newEmail, password } = req.body;
+
+    // Find the user by ID
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Verify password
+    const passwordMatch = await user.matchPassword(password);
+    if (!passwordMatch) {
+      return res.status(401).json({ message: "Incorrect password" });
+    }
+
+    // Check if email is already in use by another account
+    const emailExists = await User.findOne({ email: newEmail });
+    if (emailExists && emailExists._id.toString() !== user._id.toString()) {
+      return res.status(400).json({ message: "Email is already in use" });
+    }
+
+    // Generate verification code
+    const verificationCode = Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
+
+    // Store the new email and verification code
+    user.pendingEmail = newEmail;
+    user.emailVerificationCode = verificationCode;
+    user.emailVerificationExpires = Date.now() + 3600000; // 1 hour
+
+    await user.save();
+
+    // Send verification email to the new address
+    await sendVerificationEmail(newEmail, verificationCode);
+
+    res.json({
+      message: "Verification email sent to your new address",
+      success: true,
+    });
+  } catch (error) {
+    console.error("Email change request error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// @desc   Verify new email
+// @route  POST /auth/verify-new-email
+// @access Public
+export const verifyNewEmail = async (req, res) => {
+  const { email, code } = req.body;
+
+  try {
+    const user = await User.findOne({
+      pendingEmail: email,
+      emailVerificationCode: code,
+      emailVerificationExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        message: "Invalid or expired verification code",
+      });
+    }
+
+    // Update user's email
+    user.email = user.pendingEmail;
+    user.pendingEmail = undefined;
+    user.emailVerificationCode = undefined;
+    user.emailVerificationExpires = undefined;
+
+    await user.save();
+
+    res.json({
+      message: "Email updated successfully",
+      email: user.email,
+    });
+  } catch (error) {
+    console.error("Email verification error:", error);
+    res.status(500).json({ message: "Failed to verify email" });
+  }
+};
+
+// @desc   Logout from all devices except current one
+// @route  POST /api/auth/logout-everywhere
+// @access Private
+export const logoutEverywhere = async (req, res) => {
+  try {
+    // Get current user
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Generate a new session token
+    const newSessionToken = crypto.randomBytes(32).toString("hex");
+    user.sessionToken = newSessionToken;
+
+    await user.save();
+
+    // Return new token for current session
+    const token = generateToken(user._id, newSessionToken);
+
+    res.json({
+      message: "Successfully logged out from all other devices",
+      token,
+    });
+  } catch (error) {
+    console.error("Logout everywhere error:", error);
+    res.status(500).json({ message: "Server Error" });
   }
 };

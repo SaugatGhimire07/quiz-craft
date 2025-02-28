@@ -6,6 +6,7 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import NewPassword from "../pages/NewPassword";
 import VerifyCode from "../pages/VerifyCode";
 import VerifyEmail from "../pages/VerifyEmail";
+import AccountSettings from "../pages/AccountSettings";
 
 const AppRoutes = () => {
   return (
@@ -39,10 +40,10 @@ const AppRoutes = () => {
           }
         />
         <Route
-          path="/"
+          path="/profile"
           element={
-            <ProtectedRoute requireAuth>
-              <h1>Welcome to QuizCraft</h1>
+            <ProtectedRoute requireAuth={true}>
+              <AccountSettings />
             </ProtectedRoute>
           }
         />

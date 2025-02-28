@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 const UserSchema = new mongoose.Schema(
   {
@@ -11,6 +12,15 @@ const UserSchema = new mongoose.Schema(
     verificationExpires: { type: Date, default: undefined },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
+    sessionToken: {
+      type: String,
+      required: false,
+      default: () => crypto.randomBytes(32).toString("hex"),
+    },
+    // Add these new fields for email change
+    pendingEmail: String,
+    emailVerificationCode: String,
+    emailVerificationExpires: Date,
   },
   { timestamps: true }
 );
