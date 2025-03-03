@@ -1,7 +1,9 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import api from "../api/axios";
 import "../styles/createQuiz.css";
 import { FaEdit, FaSave, FaTrash } from "react-icons/fa"; // Import icons from react-icons
+import logo from "../assets/logo/logo.png";
 
 const CreateQuiz = () => {
   const [title, setTitle] = useState("");
@@ -97,6 +99,9 @@ const CreateQuiz = () => {
   return (
     <div className="create-quiz">
       <div className="header">
+        <Link to="/" className="logo-link">
+          <img src={logo} alt="Logo" className="logo" />
+        </Link>
         <div className="quiz-title-container">
           {isEditingTitle ? (
             <input
@@ -104,10 +109,10 @@ const CreateQuiz = () => {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="quiz-title-input"
-              placeholder="Enter Quiz Title" // Added placeholder
+              placeholder="Enter Quiz Title"
             />
           ) : (
-            <h1>{title || "Untitled Quiz"}</h1> // Fallback if title is empty
+            <p>{title || "Untitled Quiz"}</p>
           )}
           <button
             className="edit-title-btn"
@@ -121,7 +126,7 @@ const CreateQuiz = () => {
           className="create-quiz-btn"
           onClick={handleSubmit}
         >
-          Create Quiz
+          Create
         </button>
       </div>
       <div className="create-quiz-content">
@@ -178,8 +183,17 @@ const CreateQuiz = () => {
                 )
               }
               required
-              placeholder="Enter your question" // Added placeholder
+              placeholder="Enter your question"
             />
+
+            {/* Image Picker Section */}
+            <div className="image-picker">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleImageChange(e, selectedQuestionIndex)}
+              />
+            </div>
 
             {/* Image Display Section */}
             {questions[selectedQuestionIndex].image && (
@@ -187,7 +201,6 @@ const CreateQuiz = () => {
                 <img
                   src={questions[selectedQuestionIndex].image}
                   alt="Question"
-                  style={{ maxWidth: "100%", marginTop: "10px" }}
                 />
               </div>
             )}
@@ -199,22 +212,24 @@ const CreateQuiz = () => {
                 <p>False</p>
               </>
             ) : (
-              questions[selectedQuestionIndex].options.map((option, oIndex) => (
-                <input
-                  key={oIndex}
-                  type="text"
-                  value={option}
-                  onChange={(e) =>
-                    handleOptionChange(
-                      selectedQuestionIndex,
-                      oIndex,
-                      e.target.value
-                    )
-                  }
-                  placeholder={`Option ${oIndex + 1}`} // Added placeholder
-                  required
-                />
-              ))
+              <div className="options-grid">
+                {questions[selectedQuestionIndex].options.map((option, oIndex) => (
+                  <input
+                    key={oIndex}
+                    type="text"
+                    value={option}
+                    onChange={(e) =>
+                      handleOptionChange(
+                        selectedQuestionIndex,
+                        oIndex,
+                        e.target.value
+                      )
+                    }
+                    placeholder={`Option ${oIndex + 1}`}
+                    required
+                  />
+                ))}
+              </div>
             )}
 
             <label>Correct Option</label>
@@ -270,14 +285,6 @@ const CreateQuiz = () => {
                 )
               }
               required
-            />
-          </div>
-          <div className="image-picker">
-            <label>Question Image</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => handleImageChange(e, selectedQuestionIndex)}
             />
           </div>
         </div>
