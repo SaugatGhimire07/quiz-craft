@@ -4,6 +4,7 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 import api from "../api/axios";
 import "../styles/signup.css";
 import "../styles/fonts.css";
+import "../styles/auth-shared.css";
 import Logo from "../components/Logo";
 
 const SignUpPage = () => {
@@ -37,6 +38,7 @@ const SignUpPage = () => {
     setLoading(true);
 
     try {
+      // eslint-disable-next-line no-unused-vars
       const response = await api.post("/auth/register", formData);
 
       // Don't store token yet since email is not verified
@@ -64,8 +66,7 @@ const SignUpPage = () => {
   };
 
   return (
-    <div className="signup-body">
-    <div className="signup-container">
+    <div className="signup-container auth-page">
       <Logo />
       <div className="signup-box">
         <div className="signup-header">
@@ -120,6 +121,7 @@ const SignUpPage = () => {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="password-toggle"
+                aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? (
                   <EyeOff className="icon" />
@@ -139,7 +141,8 @@ const SignUpPage = () => {
         </form>
 
         <p className="terms">
-          By signing up you accept our <a href="/terms-of-service">terms of use</a> and{" "}
+          By signing up you accept our{" "}
+          <a href="/terms-of-service">terms of use</a> and{" "}
           <a href="/privacy-policy">policies</a>
         </p>
 
@@ -147,7 +150,6 @@ const SignUpPage = () => {
           <span>Already have an account?</span> <Link to="/login">Log in</Link>
         </div>
       </div>
-    </div>
     </div>
   );
 };

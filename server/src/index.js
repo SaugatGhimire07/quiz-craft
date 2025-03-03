@@ -4,6 +4,7 @@ import cors from "cors";
 import connectDB from "./config/database.js";
 import authRoutes from "./routes/authRoutes.js";
 import contactRoutes from "./routes/contactRoutes.js";
+import quizRoutes from "./routes/quizRoutes.js";
 
 dotenv.config(); // Load environment variables
 
@@ -14,6 +15,7 @@ app.use(express.json());
 // Connect to MongoDB
 connectDB();
 
+app.use("/api/quiz", quizRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api", contactRoutes);
 app.get("/", (req, res) => res.send("API is running..."));
