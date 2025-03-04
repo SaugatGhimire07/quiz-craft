@@ -1,0 +1,34 @@
+.quiz-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: #f9f9f9;
+}
+
+.quiz-result h1 {
+  font-size: 2rem;
+  margin-bottom: 20px;
+}
+
+.quiz-result h2 {
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+}
+
+.quiz-result h3 {
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+}
+
+.quiz-result ul {
+  list-style-type: none;
+  padding: 0;
+  margin-bottom: 20px;
+}
+
+.quiz-result li {
+  font-size: 1rem;
+  margin-bottom: 10px;
+}

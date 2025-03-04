@@ -14,6 +14,10 @@ import VerifyCode from "../pages/VerifyCode";
 import VerifyEmail from "../pages/VerifyEmail";
 import AccountSettings from "../pages/AccountSettings";
 import CreateQuiz from "../pages/CreateQuiz";
+import JoinQuiz from "../pages/JoinQuiz";
+import PlayQuiz from "../pages/PlayQuiz";
+import WaitingRoom from "../pages/WaitingRoom";
+import QuizResult from "../pages/QuizResult";
 
 const AppRoutes = () => {
   return (
@@ -62,9 +66,14 @@ const AppRoutes = () => {
         />
         <Route path="/profile" element={<AccountSettings />} />
         <Route path="/create-quiz" element={<CreateQuiz />} />
+        <Route path="/join-quiz" element={<JoinQuiz />} />
+        <Route path="/waiting-room/:quizCode" element={<WaitingRoom />} />
+        <Route path="/play/:quizCode" element={<PlayQuiz />} />
+        <Route path="/quiz-result/:quizCode" element={<QuizResult />} />
       </Routes>
     </Router>
   );
 };
 
 export default AppRoutes;
+//
