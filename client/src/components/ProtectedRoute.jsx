@@ -14,16 +14,17 @@ const ProtectedRoute = ({
     return <div>Loading...</div>;
   }
 
-
+  // First check
   if (!user) {
     return <Navigate to="/home" />;
   }
 
   // For routes that require authentication
   if (requireAuth) {
-    if (!user) {
-      return <Navigate to="/login" />;
-    }
+    // Redundant
+    // if (!user) {
+    //   return <Navigate to="/login" />;
+    // }
 
     // Redirect unverified users to verify email page
     if (!isVerified && location.pathname !== "/verify-email") {
@@ -39,7 +40,6 @@ const ProtectedRoute = ({
     if (!hasRequiredState) {
       return <Navigate to="/login" />;
     }
-
   }
 
   return children;

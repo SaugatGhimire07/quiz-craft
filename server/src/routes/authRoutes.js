@@ -31,7 +31,14 @@ router.post(
 );
 
 // User Login Route
-router.post("/login", loginUser);
+router.post(
+  "/login",
+  [
+    body("email").isEmail().withMessage("Please enter a valid email"),
+    body("password").not().isEmpty().withMessage("Password is required"),
+  ],
+  loginUser
+);
 
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password/:token", resetPassword);

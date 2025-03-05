@@ -18,7 +18,6 @@ import UserDashboard from "../pages/UserDashboard";
 
 import CreateQuiz from "../pages/CreateQuiz";
 
-
 const AppRoutes = () => {
   return (
     <Router>
@@ -65,12 +64,39 @@ const AppRoutes = () => {
           }
         />
 
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute requireAuth={true}>
+              <UserDashboard />
+            </ProtectedRoute>
+          }
+        />
 
-        <Route path="/dashboard" element={<UserDashboard />} />
-
-        <Route path="/profile" element={<AccountSettings />} />
-        <Route path="/create-quiz" element={<CreateQuiz />} />
-
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute requireAuth={true}>
+              <AccountSettings />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/create"
+          element={
+            <ProtectedRoute requireAuth={true}>
+              <CreateQuiz />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/edit/:quizId"
+          element={
+            <ProtectedRoute requireAuth={true}>
+              <CreateQuiz />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </Router>
   );

@@ -25,8 +25,7 @@ const LoginPage = () => {
     try {
       const response = await api.post("/auth/login", formData);
 
-      // If email is verified, proceed with login
-      if (response.data.isVerified) {
+      if (response.data.token) {
         localStorage.setItem("token", response.data.token);
         localStorage.setItem(
           "user",
@@ -34,19 +33,17 @@ const LoginPage = () => {
             id: response.data._id,
             name: response.data.name,
             email: response.data.email,
-            isVerified: true,
+            isVerified: response.data.isVerified,
           })
         );
-        navigate("/");
+
+        // Navigate to dashboard
+        navigate("/dashboard");
       }
     } catch (error) {
-      // Handle 403 Forbidden (unverified email)
+      // Handle unverified email
       if (error.response?.status === 403) {
         setError("Please verify your email to continue");
-
-        // Show loading state for verification redirect
-        setLoading(true);
-
         setTimeout(() => {
           navigate("/verify-email", {
             state: {
@@ -58,7 +55,7 @@ const LoginPage = () => {
         return;
       }
 
-      // Handle other errors
+      // Handle invalid credentials
       setError(
         error.response?.data?.message ||
           "Login failed. Please check your credentials."
