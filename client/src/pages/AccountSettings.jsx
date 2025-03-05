@@ -334,7 +334,7 @@ const AccountSettings = () => {
 
   return (
     <div className="account-settings-container">
-      <DashboardNavbar />
+      <DashboardNavbar initials={initials} />
 
       <div className="content-container">
         {/* Main content with sidebar */}
