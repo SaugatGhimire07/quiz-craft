@@ -6,7 +6,9 @@ const questionSchema = new mongoose.Schema({
   correctOption: { type: String, required: true },
   type: { type: String, required: true },
   timer: { type: Number, required: true },
-  imageId: { type: String }, // Store GridFS file ID
+  image: { type: String }, // Store the image URL
+  imageFilename: { type: String }, // Store the image filename for deletion
+  imageId: { type: String }, // Keep existing imageId for backward compatibility
 });
 
 const quizSchema = new mongoose.Schema({

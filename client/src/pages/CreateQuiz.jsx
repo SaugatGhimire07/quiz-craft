@@ -96,15 +96,35 @@ const CreateQuiz = () => {
     }
   };
 
-  const handleImageChange = (e) => {
+  const handleImageChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const imageDataUrl = reader.result;
-        handleQuestionChange(selectedQuestionIndex, "image", imageDataUrl);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const response = await api.post("/images/upload", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      // Store the URL and filename
+      handleQuestionChange(selectedQuestionIndex, "image", response.data.url);
+      handleQuestionChange(
+        selectedQuestionIndex,
+        "imageFilename",
+        response.data.filename
+      );
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      setAlert({
+        show: true,
+        message: "Failed to upload image. Please try again.",
+        type: "error",
+      });
+      setTimeout(() => setAlert({ show: false, message: "", type: "" }), 3000);
     }
   };
 
@@ -113,29 +133,64 @@ const CreateQuiz = () => {
     e.stopPropagation();
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault();
     e.stopPropagation();
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      const reader = new FileReader();
-      reader.onload = () => {
-        const imageDataUrl = reader.result;
-        handleQuestionChange(selectedQuestionIndex, "image", imageDataUrl);
-      };
-      reader.readAsDataURL(file);
+
+      try {
+        const formData = new FormData();
+        formData.append("image", file);
+
+        const response = await api.post("/images/upload", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+
+        // Store the URL and filename
+        handleQuestionChange(selectedQuestionIndex, "image", response.data.url);
+        handleQuestionChange(
+          selectedQuestionIndex,
+          "imageFilename",
+          response.data.filename
+        );
+      } catch (error) {
+        console.error("Error uploading image:", error);
+        setAlert({
+          show: true,
+          message: "Failed to upload image. Please try again.",
+          type: "error",
+        });
+        setTimeout(
+          () => setAlert({ show: false, message: "", type: "" }),
+          3000
+        );
+      }
     }
   };
 
-  const removeImage = (e) => {
+  const removeImage = async (e) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
 
+    const filename = questions[selectedQuestionIndex].imageFilename;
+
+    // If we have a filename, try to delete the file from the server
+    if (filename) {
+      try {
+        await api.delete(`/images/${filename}`);
+      } catch (error) {
+        console.error("Error deleting image:", error);
+      }
+    }
+
     handleQuestionChange(selectedQuestionIndex, "image", "");
-    handleQuestionChange(selectedQuestionIndex, "imageId", null);
+    handleQuestionChange(selectedQuestionIndex, "imageFilename", null);
   };
 
   // Update handleSubmit to handle both create and edit
