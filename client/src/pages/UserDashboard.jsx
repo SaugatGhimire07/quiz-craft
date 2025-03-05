@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { useNavigate } from "react-router-dom";
 import DashNav from "../components/DashNav";
 import SidebarNav from "../components/SidebarNav";
 import { useAuth } from "../hooks/useAuth";
-import api from "../api/axios"; // Add this import
+import api from "../api/axios";
 import "../styles/userdashboard.css";
 
 const UserDashboard = () => {
@@ -66,7 +66,7 @@ const UserDashboard = () => {
         {/* Main content with sidebar */}
         <div className="main-content">
           {/* Sidebar */}
-          <SidebarNav active="dashboard" />
+          <SidebarNav active="dashboard" showBackButton={false} />
 
           {/* Dashboard content */}
           <div className="dashboard-content">

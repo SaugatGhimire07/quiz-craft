@@ -4,15 +4,12 @@ import api from "../api/axios";
 import "../styles/account-settings.css";
 import "../styles/fonts.css";
 
-
 //components
 import DashboardNavbar from "../components/DashNav";
 import SideBar from "../components/SidebarNav";
 
-
 import logoImage from "../assets/logo/logo-only.png";
 import { useNavigate } from "react-router-dom";
-
 
 const AccountSettings = () => {
   const { user, login, logout } = useAuth();
@@ -337,33 +334,13 @@ const AccountSettings = () => {
 
   return (
     <div className="account-settings-container">
-
       <DashboardNavbar />
-
-      {/* Header */}
-      <header className="header">
-        <div className="logo">
-          <img src={logoImage} alt="Quiz Craft Logo" width="40" height="30" />
-        </div>
-        <div className="header-right">
-          <div className="avatar-circle">{initials}</div>
-        </div>
-      </header>
-      <div
-        style={{
-          height: "1px",
-          backgroundColor: "#e5e5e5",
-          width: "100%",
-          marginBottom: "20px",
-        }}
-      ></div>
-
 
       <div className="content-container">
         {/* Main content with sidebar */}
         <div className="main-content">
           {/* Sidebar */}
-          <SideBar />
+          <SideBar active="account" />
 
           {/* Main content */}
           <div className="settings-content">

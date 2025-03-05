@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import logoImage from "../assets/logo/logo-only.png";
-import "../styles/sidebarnav.css"; // Using the new CSS file
+import "../styles/sidebarnav.css";
 import PropTypes from "prop-types";
 
 const DashNav = ({ initials }) => {
