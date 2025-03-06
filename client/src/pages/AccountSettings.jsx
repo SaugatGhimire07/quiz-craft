@@ -8,7 +8,6 @@ import "../styles/fonts.css";
 import DashboardNavbar from "../components/DashNav";
 import SideBar from "../components/SidebarNav";
 
-import logoImage from "../assets/logo/logo-only.png";
 import { useNavigate } from "react-router-dom";
 
 const AccountSettings = () => {
