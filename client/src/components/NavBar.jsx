@@ -14,10 +14,18 @@ const NavBar = () => {
       </div>
       <ul className="navbar-links">
         <li><a href="/">Home</a></li>
-        <li><a href="/about">About</a></li>
-        <li><a href="/contact">Contact</a></li>
-        <li><a href="/login">Login</a></li>
-      </ul>
+        <li><a href="/features">Features</a></li>
+        <li><a href="/contact">How it works</a></li>
+        </ul>
+
+        <ul className="navbar-auth">
+        <li><a href="/login">Log in</a></li>
+        <div className='signup'>        
+          <li><a href="/login" style={{color:"white"}}>Sign Up</a></li>
+        </div>
+
+        </ul>
+      
     </nav>
   );
 };

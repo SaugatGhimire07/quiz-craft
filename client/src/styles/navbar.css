@@ -1,4 +1,4 @@
-.navbar {
+/* .navbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -37,4 +37,64 @@
   .img{
     width: 100px;
     height: 30px;
-  }
+  } */
+
+  .navbar {
+    display: flex;
+    align-items: center;
+    background-color: #ffffff;
+    padding: 1rem 2rem;
+}
+
+/* Left Side: Logo */
+.navbar-logo {
+    flex: 0 0 auto;
+}
+
+.navbar-logo a {
+    text-decoration: none;
+}
+
+.img {
+    width: 100px;
+    height: 30px;
+}
+
+/* Center: Navigation Links */
+.navbar-links {
+    list-style: none;
+    display: flex;
+    gap: 2rem;
+    padding: 0;
+    margin: 0;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* Right Side: Login & Sign Up */
+.navbar-auth {
+    display: flex;
+    gap: 1rem;
+    margin-left: auto;
+    align-items: center;
+}
+
+/* General Styles */
+.navbar-links a,
+.navbar-auth a {
+    color: #000000;
+    text-decoration: none;
+    font-size: 1rem;
+}
+
+.navbar-links a:hover,
+.navbar-auth a:hover {
+    text-decoration: underline;
+}
+
+.signup{
+  padding: 8px;
+  background-color: #5E17EB;
+  border-radius: 20px;
+}
