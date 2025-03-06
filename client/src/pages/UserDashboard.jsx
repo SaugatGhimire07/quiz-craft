@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DashNav from "../components/DashNav";
 import SidebarNav from "../components/SidebarNav";
+import ConfirmationOverlay from "../components/ConfirmationOverlay";
 import { useAuth } from "../hooks/useAuth";
 import api from "../api/axios";
 import "../styles/userdashboard.css";
@@ -9,10 +10,15 @@ import "../styles/userdashboard.css";
 const UserDashboard = () => {
   const { user } = useAuth();
   const [initials, setInitials] = useState("");
-  const [name, setName] = useState(""); // Add name state
-  const [quizzes, setQuizzes] = useState([]); // Add quizzes state
-  const [loading, setLoading] = useState(true); // Add loading state
-  const navigate = useNavigate(); // Initialize useNavigate
+  const [name, setName] = useState("");
+  const [quizzes, setQuizzes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  // Add state to track which dropdown is currently open
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  // Add state for delete confirmation
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [quizToDelete, setQuizToDelete] = useState(null);
 
   // Function to fetch user's quizzes
   const fetchQuizzes = async () => {
@@ -30,10 +36,8 @@ const UserDashboard = () => {
   useEffect(() => {
     if (user) {
       const userName = user.name || "";
-      // Set the name state
       setName(userName);
 
-      // Generate initials from name
       const userInitials = userName
         ? userName
             .split(" ")
@@ -44,17 +48,74 @@ const UserDashboard = () => {
         : "";
       setInitials(userInitials);
 
-      // Fetch quizzes when component mounts
       fetchQuizzes();
     }
   }, [user]);
 
+  // Add effect to close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (activeDropdown !== null && !event.target.closest(".quiz-dropdown")) {
+        setActiveDropdown(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [activeDropdown]);
+
   const handleCreateNew = () => {
-    navigate("/create"); // Redirect to create quiz page
+    navigate("/create");
+  };
+
+  const handleJoinQuiz = () => {
+    navigate("/join");
   };
 
   const handleQuizClick = (quizId) => {
-    navigate(`/edit/${quizId}`); // Navigate to edit route with quiz ID
+    navigate(`/edit/${quizId}`);
+  };
+
+  // New function to toggle dropdown menu
+  const toggleDropdown = (e, index) => {
+    e.stopPropagation(); // Prevent card click
+    setActiveDropdown(activeDropdown === index ? null : index);
+  };
+
+  // Handle making quiz live
+  const handleMakeQuizLive = async (e, quizId) => {
+    e.stopPropagation(); // Prevent card click
+    try {
+      await api.patch(`/quiz/${quizId}/publish`);
+      // Refresh quizzes after update
+      fetchQuizzes();
+      setActiveDropdown(null);
+    } catch (error) {
+      console.error("Error making quiz live:", error);
+    }
+  };
+
+  // Open delete confirmation dialog
+  const confirmDelete = (e, quiz) => {
+    e.stopPropagation(); // Prevent card click
+    setQuizToDelete(quiz);
+    setShowDeleteConfirmation(true);
+    setActiveDropdown(null);
+  };
+
+  // Handle deleting a quiz
+  const handleDeleteQuiz = async () => {
+    if (!quizToDelete) return;
+
+    try {
+      await api.delete(`/quiz/${quizToDelete._id}`);
+      // Remove quiz from state
+      setQuizzes(quizzes.filter((quiz) => quiz._id !== quizToDelete._id));
+    } catch (error) {
+      console.error("Error deleting quiz:", error);
+    }
   };
 
   return (
@@ -74,7 +135,7 @@ const UserDashboard = () => {
 
             <div className="top-section">
               <button className="dropdown-button" onClick={handleCreateNew}>
-                Create new quiz
+                New Quiz
                 <span className="dropdown-icon">
                   <svg
                     width="14"
@@ -92,6 +153,31 @@ const UserDashboard = () => {
                   </svg>
                 </span>
               </button>
+
+              {/* Join Quiz Button */}
+              <button
+                className="dropdown-button join-button"
+                onClick={handleJoinQuiz}
+              >
+                Join Quiz
+                <span className="dropdown-icon">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                    <polyline points="10 17 15 12 10 7"></polyline>
+                    <line x1="15" y1="12" x2="3" y2="12"></line>
+                  </svg>
+                </span>
+              </button>
             </div>
 
             <h2 className="sub-heading-title">Your Quizzes</h2>
@@ -100,11 +186,11 @@ const UserDashboard = () => {
               {loading ? (
                 <div>Loading quizzes...</div>
               ) : quizzes.length > 0 ? (
-                quizzes.map((quiz) => (
+                quizzes.map((quiz, index) => (
                   <div
                     key={quiz._id}
                     className="quiz-card"
-                    onClick={() => handleQuizClick(quiz._id)} // Add click handler
+                    onClick={() => handleQuizClick(quiz._id)}
                   >
                     <div className="quiz-preview">
                       {quiz.questions.some((q) => q.image) ? (
@@ -129,18 +215,105 @@ const UserDashboard = () => {
                           {new Date(quiz.createdAt).toLocaleDateString()}
                         </p>
                       </div>
+
+                      {/* Ellipsis button and dropdown */}
+                      <div className="quiz-dropdown">
+                        <button
+                          className="ellipsis-button"
+                          onClick={(e) => toggleDropdown(e, index)}
+                          aria-label="Quiz options"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <circle cx="12" cy="12" r="1"></circle>
+                            <circle cx="12" cy="5" r="1"></circle>
+                            <circle cx="12" cy="19" r="1"></circle>
+                          </svg>
+                        </button>
+
+                        {activeDropdown === index && (
+                          <div className="dropdown-menu">
+                            <button
+                              onClick={(e) => handleMakeQuizLive(e, quiz._id)}
+                              className="dropdown-item"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polygon points="10 8 16 12 10 16 10 8"></polygon>
+                              </svg>
+                              Make Quiz Live
+                            </button>
+                            <button
+                              onClick={(e) => confirmDelete(e, quiz)}
+                              className="dropdown-item delete-item"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M3 6h18"></path>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                              </svg>
+                              Delete Quiz
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="no-quizzes">
-                  <p>You haven't created any quizzes yet.</p>
+                  <p>You haven&apos;t created any quizzes yet.</p>
                 </div>
               )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Overlay */}
+      <ConfirmationOverlay
+        isOpen={showDeleteConfirmation}
+        onClose={() => setShowDeleteConfirmation(false)}
+        onConfirm={handleDeleteQuiz}
+        title="Delete Quiz"
+        message={
+          <>
+            Are you sure you want to delete "
+            <strong>{quizToDelete?.title}</strong>"?
+            <br />
+            <span className="text-danger">This action cannot be undone.</span>
+          </>
+        }
+        type="danger"
+      />
     </div>
   );
 };

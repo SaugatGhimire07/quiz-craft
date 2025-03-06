@@ -1,0 +1,125 @@
+.confirmation-overlay-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.confirmation-overlay-container {
+  width: 90%;
+  max-width: 420px;
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  animation: slideIn 0.25s ease-out;
+}
+
+.confirmation-overlay-content {
+  padding: 24px;
+}
+
+.confirmation-overlay-content h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.confirmation-overlay-content p {
+  margin: 0;
+  font-size: 16px;
+  color: #555;
+  margin-bottom: 24px;
+}
+
+.confirmation-overlay-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Button styles */
+.confirmation-overlay-actions button {
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.cancel-button {
+  background-color: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+}
+
+.cancel-button:hover {
+  background-color: #e5e7eb;
+}
+
+.confirm-button {
+  border: none;
+}
+
+.confirm-button.danger {
+  background-color: #ef4444;
+  color: white;
+}
+
+.confirm-button.danger:hover {
+  background-color: #dc2626;
+}
+
+.confirm-button.warning {
+  background-color: #f59e0b;
+  color: white;
+}
+
+.confirm-button.warning:hover {
+  background-color: #d97706;
+}
+
+.confirm-button.info {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.confirm-button.info:hover {
+  background-color: #2563eb;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.text-danger {
+  color: #e53e3e;
+  font-size: 0.9em;
+  margin-top: 8px;
+  display: block;
+}

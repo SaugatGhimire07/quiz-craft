@@ -1,27 +1,40 @@
 import mongoose from "mongoose";
 
-const questionSchema = new mongoose.Schema({
-  questionText: { type: String, required: true },
-  options: [{ type: String, required: true }],
-  correctOption: { type: String, required: true },
-  type: { type: String, required: true },
-  timer: { type: Number, required: true },
-  image: { type: String }, // Store the image URL
-  imageFilename: { type: String }, // Store the image filename for deletion
-  imageId: { type: String }, // Keep existing imageId for backward compatibility
-});
-
-const quizSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  questions: [questionSchema],
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
+const quizSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true },
+    questions: [
+      {
+        questionText: String,
+        options: [String],
+        correctOption: String,
+        type: { type: String, default: "multiple-choice" },
+        timer: { type: Number, default: 30 },
+        // Add these fields to store image data
+        image: String, // URL to the image
+        imageFilename: String, // Filename for deletion
+        imageId: mongoose.Schema.Types.ObjectId,
+      },
+    ],
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    // Keep code field as non-unique
+    code: {
+      type: String,
+      unique: false,
+      sparse: true, // Only index non-null values
+    },
+    status: {
+      type: String,
+      enum: ["draft", "published", "live"],
+      default: "draft",
+    },
   },
-  createdAt: { type: Date, default: Date.now },
-  status: { type: String, enum: ["draft", "live"], default: "draft" },
-});
+  { timestamps: true }
+);
 
 const Quiz = mongoose.model("Quiz", quizSchema);
 
