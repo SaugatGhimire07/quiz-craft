@@ -17,6 +17,7 @@ import AccountSettings from "../pages/AccountSettings";
 import UserDashboard from "../pages/UserDashboard";
 
 import CreateQuiz from "../pages/CreateQuiz";
+import WaitingRoom from "../pages/WaitingRoom";
 
 const AppRoutes = () => {
   return (
@@ -27,6 +28,7 @@ const AppRoutes = () => {
         <Route path="/" element={<HomePage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
+        <Route path="/waiting-room" element={<WaitingRoom />} />
         {/* <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-of-service" element={<Terms />} />
         <Route path="/cookie-policy" element={<CookiePolicy />} /> */}
