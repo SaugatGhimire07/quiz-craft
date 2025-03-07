@@ -26,21 +26,26 @@ const LoginPage = () => {
       const response = await api.post("/auth/login", formData);
 
       if (response.data.token) {
+        // First store the token
         localStorage.setItem("token", response.data.token);
-        localStorage.setItem(
-          "user",
-          JSON.stringify({
-            id: response.data._id,
-            name: response.data.name,
-            email: response.data.email,
-            isVerified: response.data.isVerified,
-          })
-        );
 
-        // Navigate to dashboard
-        navigate("/dashboard");
+        // Then store user data
+        const userData = {
+          id: response.data._id,
+          name: response.data.name,
+          email: response.data.email,
+          isVerified: response.data.isVerified,
+        };
+
+        // Update auth context
+        await login(userData);
+
+        // Finally navigate
+        navigate("/dashboard", { replace: true });
       }
     } catch (error) {
+      console.error("Login error:", error);
+
       // Handle unverified email
       if (error.response?.status === 403) {
         setError("Please verify your email to continue");

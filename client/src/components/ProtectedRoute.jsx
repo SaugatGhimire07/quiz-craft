@@ -7,29 +7,16 @@ const ProtectedRoute = ({
   allowedStates = [],
   requireAuth = false,
 }) => {
-  const { user, loading, isVerified } = useAuth();
+  const { user, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
     return <div>Loading...</div>;
   }
 
-  // First check
-  if (!user) {
-    return <Navigate to="/home" />;
-  }
-
-  // For routes that require authentication
-  if (requireAuth) {
-    // Redundant
-    // if (!user) {
-    //   return <Navigate to="/login" />;
-    // }
-
-    // Redirect unverified users to verify email page
-    if (!isVerified && location.pathname !== "/verify-email") {
-      return <Navigate to="/verify-email" state={{ email: user.email }} />;
-    }
+  // Store the attempted URL
+  if (requireAuth && !user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // For password reset flow routes

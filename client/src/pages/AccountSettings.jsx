@@ -319,15 +319,13 @@ const AccountSettings = () => {
 
       // Call the logout function from AuthContext
       logout();
-
-      // Navigate to login page
-      navigate("/login");
+      navigate("/");
     } catch (error) {
       console.error("Logout error:", error);
 
       // Even if the API call fails, still logout on the client side
       logout();
-      navigate("/login");
+      navigate("/");
     }
   };
 

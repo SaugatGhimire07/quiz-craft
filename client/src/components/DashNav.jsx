@@ -4,6 +4,7 @@ import logoImage from "../assets/logo/logo-only.png";
 import "../styles/sidebarnav.css";
 import PropTypes from "prop-types";
 import { useAuth } from "../hooks/useAuth";
+import api from "../api/axios"; // Add this import
 
 const DashNav = ({ initials }) => {
   const { user, logout } = useAuth();
@@ -27,10 +28,20 @@ const DashNav = ({ initials }) => {
 
   const handleLogout = async () => {
     try {
+      // Call API to invalidate session tokens on server
+      await api.post("/auth/logout-everywhere");
+
+      // Call logout from auth context
       await logout();
-      navigate("/login");
+
+      // Redirect to landing page
+      navigate("/");
     } catch (error) {
       console.error("Logout failed", error);
+
+      // Even if the API call fails, still logout on the client side
+      logout();
+      navigate("/");
     }
   };
 

@@ -231,7 +231,7 @@
   background-color: #f0f0f0;
 }
 
-.dropdown-menu {
+.quiz-dropdown-menu {
   position: absolute;
   right: 0;
   top: calc(100% + 5px); /* Push it a bit lower */
@@ -243,7 +243,7 @@
   overflow: visible; /* Change from hidden to visible */
 }
 
-.dropdown-item {
+.quiz-dropdown-item {
   display: flex;
   align-items: center;
   gap: 8px;
