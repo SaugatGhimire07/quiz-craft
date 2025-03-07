@@ -98,12 +98,7 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    // Generate new session token
-    const sessionToken = crypto.randomBytes(32).toString("hex");
-    user.sessionToken = sessionToken;
-    await user.save();
-
-    const token = generateToken(user._id, sessionToken);
+    const token = generateToken(user._id, user.sessionToken);
 
     res.json({
       _id: user._id,
