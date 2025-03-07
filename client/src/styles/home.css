@@ -1,405 +1,412 @@
 * {
-    margin: 0;
-    padding: 0;
+  margin: 0;
+  padding: 0;
 }
 
-
-
-
-.header-container{
-    width: 500px;
-    margin: auto;
-    text-align: center;
-    
-
+.header-container {
+  width: 500px;
+  margin: auto;
+  text-align: center;
 }
 
-.pincode-container{
-    width: 100%;
-    height: 50px;
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    background-color: #EDEFFE;
-    margin-bottom: 20px;
-    border-radius: 1px solid black;
-    box-shadow: #333 0px 0px 10px;
-    align-items: center;
-    
+.pincode-container {
+  width: 100%;
+  height: 60px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  background-color: #edeffe;
+  margin-bottom: 20px;
+  align-items: center;
+  border-radius: 0px 0px 20px 20px;
 }
 
-.enter-pincode-text{
-    text-align: center;
-    font-size: 20px;
-    font-weight: bold;
-    margin-right: 10px;
-
+.enter-pincode-text {
+  color: #171717;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+  margin-right: 10px;
 }
 
-.pincode-input{
-    
-    width: 120px;
-    height: 35px;
-    border-radius: 10px;
-    border: none;
-    margin-left: 10px;
-    padding-left: 10px;
-    margin-right: 10px;
+.pincode-input {
+  width: 120px;
+  height: 35px;
+  border-radius: 10px;
+  border: none;
+  margin-left: 10px;
+  padding-left: 10px;
+  margin-right: 10px;
 }
-.pincode-button{
-    width: 100px;
-    display: flex;
-    height: 35px;
-    background-color: #ffc516;
-    border-radius: 10px;
-    border: none;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-    flex-direction: row;
-    justify-content: center;
-}
-
-.header{
-    color: black;
-    font-size: 40px;
-    
-}
-.header-text{
-    font-size: 13px;
-    font-weight: normal;
-    margin-top: 10px;
+.pincode-button {
+  width: 100px;
+  display: flex;
+  height: 35px;
+  background-color: #d9d9d9;
+  border-radius: 999px;
+  border: none;
+  color: #c3c0bf;
+  font-weight: 600;
+  cursor: pointer;
+  flex-direction: row;
+  justify-content: center;
 }
 
-.bottom-container{
-    width: 500px;
-    margin: auto;
-    margin-top: 20px;
+.header {
+  color: black;
+  font-size: 40px;
+  font-weight: 600;
 }
-.button{
-    width: 30%;
-    margin-left:35%;
-    background-color: #ffc516;
-    border-radius: 40px;
-    color: white;
-    font-size: 20px;
-    font-weight: bold;
-    padding: 10px;
-    border: none;
-    cursor: pointer;
-    margin-top: 10px;
-    text-align: center;
+.header-text {
+  font-size: 16px;
+  font-weight: normal;
+  margin-top: 10px;
+  text-align: center;
 }
 
-.img_Style{
-    height: 100%;
-    margin-top: 20px;
+.bottom-container {
+  width: 500px;
+  margin: auto;
+  margin-top: 20px;
+}
+.button {
+  width: 30%;
+  margin-left: 35%;
+  background-color: #ffc516;
+  border-radius: 40px;
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+  padding: 10px;
+  border: none;
+  cursor: pointer;
+  margin-top: 10px;
+  text-align: center;
 }
 
-.text-container{
-    display: grid;
-    width: 80%;
-    margin: auto;
-    margin-top: 100px;
-    align-items: center;
-    justify-items: center;
+.img_Style {
+  height: 100%;
+  margin-top: 20px;
 }
 
-.short-heading{
-    width: 230px;
-    font-weight: 500;
-    color: rgb(0, 0, 0);
-    background-color: #f8f5f4;
-    text-align: center;
-    border-radius: 10px;
-    padding: 10px;
-    margin-bottom: 30px
-}
-.heading-2{
-    font-size: 600;
-    margin-bottom: 10px;    
-}
-.From_heading{
-    font-weight: 600;
+.text-container {
+  display: grid;
+  width: 80%;
+  margin: auto;
+  align-items: center;
+  justify-items: center;
 }
 
-.para-2{
-    margin-bottom: 20px;
-    padding:10px ;
-    padding-left: 100px;
-    text-align: center;
+.short-heading {
+  width: 230px;
+  font-weight: 500;
+  color: rgb(0, 0, 0);
+  background-color: #f8f5f4;
+  text-align: center;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 30px;
+}
+.heading-2 {
+  font-size: 600;
+  margin-bottom: 10px;
+}
+.From_heading {
+  font-weight: 600;
 }
 
-.desc-container { 
-    margin-left: 180px;
+.para-2 {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.desc-container {
+  margin-left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+  margin-bottom: 100px;
 }
 
 .desc_points {
-    display: flex;
-    flex-direction: row;
-    font-size: 14px;
-    font-weight: 500;
-    color: black;
-    margin-bottom: 10px;
-    margin-left: 50px;
-    list-style: none;
-    padding: 0;
-    gap: 14px; /* Adds spacing between items */
+  display: flex;
+  flex-direction: row;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 10px;
+  list-style: none;
+  padding: 0;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .desc_points li {
-    border: solid 2px #d18214;
-    border-radius: 20px;
-    min-width: 180px; /* Increase width to fit text in a single line */
-    white-space: nowrap; /* Prevents text from wrapping */
-    padding: 10px 15px;
-    text-align: center;
+  border: solid 2px #d18214;
+  border-radius: 20px;
+  min-width: 180px;
+  white-space: nowrap;
+  padding: 10px 15px;
+  text-align: center;
 }
 
 .features-container {
-    display: flex;
-    justify-content: center;
-    gap: 24px;
-    padding: 40px 20px;
-    max-width: 1200px;
-    margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  padding: 40px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .feature-card {
-    background: white;
-    border-radius: 16px;
-    padding: 24px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    text-align: center;
-    width: 320px;
+  background: white;
+  border-radius: 16px;
+  padding: 26px;
+  border: 1px solid #ecf1f3;
+  text-align: center;
+  width: 350px;
 }
 
 h2 {
-    font-size: 22px;
-    font-weight: bold;
-    color: #333;
+  font-size: 22px;
+  font-weight: 600;
+  color: #171717;
 }
 
 .feature-image {
-    position: relative;
-    border-radius: 12px;
-    height: 192px;
-    margin: 20px auto;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+  position: relative;
+  border-radius: 12px;
+  height: 227px;
+  margin: 20px auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Add this new style for the images inside feature-image */
+.feature-img {
+  height: 135px;
+  width: auto;
+  object-fit: contain;
 }
 
 .pink {
-    background-color: #FFE4E6;
+  background-color: #ffe4e6;
 }
 
 .purple {
-    background-color: #EEF2FF;
+  background-color: #eef2ff;
 }
 
 .yellow {
-    background-color: #FEF9C3;
+  background-color: #fef9c3;
 }
 
 .pink1 {
-    background-color: #e6969b;
+  background-color: #e6969b;
 }
 
 .purple1 {
-    background-color: #EEF2FF;
+  background-color: #eef2ff;
 }
 
 .yellow1 {
-    background-color: #FEF9C3;
+  background-color: #fef9c3;
 }
 
 /* Styled numbers */
 .number {
-    position: absolute;
-    font-size: 120px;
-    font-weight: bold;
-    color: rgba(0, 0, 0, 0.1);
-    z-index: 1;
+  position: absolute;
+  font-size: 120px;
+  font-weight: bold;
+  color: rgba(0, 0, 0, 0.1);
+  z-index: 1;
 }
 
 .number-one {
-    top: 10px;
-    left: 10px;
+  top: 10px;
+  left: 10px;
 }
 
-.design1{
-
-    width: 200px;
-    height: 100px;
-    background-color: lightblue;
-    clip-path: ellipse(50% 60% at 0% 0%);
+.design1 {
+  width: 200px;
+  height: 100px;
+  background-color: lightblue;
+  clip-path: ellipse(50% 60% at 0% 0%);
 }
-
 
 .number-two {
-    top: 5px;
-    left: 20px;
+  top: 5px;
+  left: 20px;
 }
 
 .number-three {
-    top: 15px;
-    left: 15px;
-}
-
-/* Images inside the shapes */
-.feature-img {
-    position: absolute;
-    width: 136px;
-    height: 150px;
-    z-index: 2;
-    clip-path: polygon(22% 19%, 83% 5%, 85% 88%, 21% 88%);
-    border-radius: 8px;
-}
-
-.feature-img1 {
-    position: absolute;
-    width: 42%;
-    height: auto;
-    z-index: 2;
-    clip-path: polygon(18% 19%, 83% 16%, 96% 85%, 31% 86%);
-    border-radius: 8px;
-}
-
-.feature-img2 {
-    position: absolute;
-    width: 42%;
-    height: auto;
-    z-index: 2;
-    /* clip-path: polygon(16% 0, 16% 37%, 38% 42%, 53% 50%, 63% 66%, 65% 83%, 64% 100%, 100% 100%, 100% 85%, 100% 49%, 91% 32%, 69% 17%, 46% 7%); */
-
-  clip-path: path("M0,0 L200,0 Q250,0 250,50 L250,150 L0,150 Z");
-    border-radius: 8px;
+  top: 15px;
+  left: 15px;
 }
 
 p {
-    font-size: 16px;
-    color: #666;
-    line-height: 1.5;
+  font-size: 16px;
+  color: #171717;
+  line-height: 1.5;
+  text-align: left;
 }
 
 /* Responsive Design */
 @media (max-width: 992px) {
-    .features-container {
-        flex-direction: column;
-        align-items: center;
-    }
+  .features-container {
+    flex-direction: column;
+    align-items: center;
+  }
 
-    .feature-card {
-        width: 100%;
-        max-width: 320px;
-    }
+  .feature-card {
+    width: 100%;
+    max-width: 320px;
+  }
 }
 
-
 .last-container {
-    display: flex;
-    width: 100%;
-    gap: 40px;
-    height: 80vh;
-    justify-content: center;
-    align-items: center;
-    background-color: #ffffff;
+  display: flex;
+  width: 100%;
+  gap: 130px;
+  height: auto; /* Change from fixed height to auto */
+  justify-content: center;
+  align-items: stretch; /* Change from center to stretch */
+  background-color: #ffffff;
+  padding: 60px 20px; /* Add padding for better spacing */
 }
 
 /* Left side image container */
 .left_img_container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* Remove any fixed height if present */
 }
 
 .img-wrapper {
-    background-color: #cfe2ff; /* Light blue background */
-    padding: 40px;
-    border-radius: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  background-color: #cfe2ff; /* Light blue background */
+  padding: 40px;
+  border-radius: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%; /* Make it take full height of parent */
 }
 
 .rotated-img {
-    width: 300px;
-    height: auto;
-    transform: rotate(-5deg);
-    border-radius: 10px;
+  width: 326px;
+  height: 339px;
+  border-radius: 10px;
 }
 
 /* Right side text container */
 .right_text_container {
-    max-width: 500px;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start; /* Align items to the start (left) */
 }
 
 .badge {
-    background-color: #f8f8f8;
-    padding: 8px 15px;
-    border-radius: 10px;
-    font-weight: bold;
-    display: inline-block;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: #f8f8f8;
+  padding: 15px 32px;
+  border-radius: 10px;
+  font-weight: 600;
+  display: inline-block; /* Keep this as inline-block */
+  align-self: flex-start; /* Ensure it doesn't stretch */
 }
 
 .text-content {
-    font-size: 18px;
-    color: #333;
-    line-height: 1.6;
-    margin-top: 15px;
+  font-size: 28px;
+  font-style: italic;
+  color: #171717;
+  margin-top: 32px;
+  width: 100%; /* This can take full width */
 }
 
 /* Learn More Button */
 .learn-more-btn {
-    margin-top: 20px;
-    padding: 10px 20px;
-    font-size: 16px;
-    border: 2px solid black;
-    background: none;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: all 0.3s ease;
+  margin-top: 20px;
+  padding: 10px 20px;
+  font-size: 16px;
+  border: 2px solid black;
+  background: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  align-self: flex-start; /* Ensure it doesn't stretch */
+  display: inline-block; /* Keep it as inline-block */
 }
 
-.learn-more-btn:hover {
-    background-color: black;
-    color: white;
+.Ready-container {
+  text-align: center;
+  width: 100%;
+  height: 40%;
+  padding: 10%;
+  background: #8a8989;
+}
+.Ready-button {
+  width: 30%;
+  background-color: #ffc516;
+  border-radius: 40px;
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+  padding: 10px;
+  border: none;
+  cursor: pointer;
+  margin-top: 10px;
+
+  text-align: center;
 }
 
-
-.Ready-container{
-    text-align: center;
-    width: 100%;
-    height: 40%;
-    padding: 10%;
-    background: #8a8989;
-}
-.Ready-button{
-    width: 30%;
-    background-color: #ffc516;
-    border-radius: 40px;
-    color: white;
-    font-size: 20px;
-    font-weight: bold;
-    padding: 10px;
-    border: none;
-    cursor: pointer;
-    margin-top: 10px;
-    
-    text-align: center;
+.left-style {
+  background-color: red;
+  clip-path: polygon(
+    14% 68%,
+    20% 75%,
+    25% 85%,
+    29% 100%,
+    0 100%,
+    0 62%,
+    7% 63%
+  );
+  /* width: 100px; */
+  display: block;
+  height: 400px;
+  z-index: 999999;
+  position: relative;
 }
 
+@media (max-width: 768px) {
+  .desc_points {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
 
+  .desc_points li {
+    width: 80%;
+    max-width: 300px;
+  }
+}
 
-.left-style{
-    background-color: red;
-    clip-path: polygon(14% 68%, 20% 75%, 25% 85%, 29% 100%, 0 100%, 0 62%, 7% 63%);
-    /* width: 100px; */
-    display: block;
-    height: 400px;
-    z-index: 999999;
-    position: relative;
+/* Add these styles for fullwidth image */
+.fullwidth-img-container {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
 
+.fullwidth-image {
+  margin-top: 60px;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  display: block;
 }
