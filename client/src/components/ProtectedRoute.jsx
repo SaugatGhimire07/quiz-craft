@@ -16,7 +16,7 @@ const ProtectedRoute = ({
 
   // First check
   if (!user) {
-    return <Navigate to="/home" />;
+    return <Navigate to="/" />;
   }
 
   // For routes that require authentication

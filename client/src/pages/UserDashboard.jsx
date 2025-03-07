@@ -241,10 +241,10 @@ const UserDashboard = () => {
                         </button>
 
                         {activeDropdown === index && (
-                          <div className="dropdown-menu">
+                          <div className="quiz-dropdown-menu">
                             <button
                               onClick={(e) => handleMakeQuizLive(e, quiz._id)}
-                              className="dropdown-item"
+                              className="quiz-dropdown-item"
                             >
                               <svg
                                 xmlns="http://www.w3.org/2000/svg"
