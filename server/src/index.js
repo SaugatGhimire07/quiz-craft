@@ -7,6 +7,7 @@ import connectDB from "./config/database.js";
 import authRoutes from "./routes/authRoutes.js";
 import contactRoutes from "./routes/contactRoutes.js";
 import quizRoutes from "./routes/quizRoutes.js";
+import playersRoutes from "./routes/playersRoutes.js";
 import bodyParser from "body-parser";
 import mongoose from "mongoose";
 import imageRoutes from "./routes/imageRoutes.js"; // Add this line with the other imports
@@ -49,6 +50,7 @@ mongoose
 
 app.use("/api/quiz", quizRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/players", playersRoutes);
 app.use("/api", contactRoutes);
 app.use("/api/images", imageRoutes); // Add this line with the other routes
 app.get("/", (req, res) => res.send("API is running..."));
