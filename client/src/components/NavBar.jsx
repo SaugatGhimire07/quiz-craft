@@ -4,7 +4,11 @@ import "../styles/navbar.css";
 import logo from "../assets/logo/logo.png";
 
 const NavBar = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div>Loading...</div>; // Or your loading component
+  }
 
   return (
     <nav className="navbar">
@@ -30,7 +34,6 @@ const NavBar = () => {
 
       <ul className="navbar-auth">
         {user ? (
-          // Show Dashboard button for logged-in users
           <div className="signup">
             <li>
               <Link to="/dashboard" style={{ color: "white" }}>
@@ -39,7 +42,6 @@ const NavBar = () => {
             </li>
           </div>
         ) : (
-          // Show Login and Sign Up for non-logged-in users
           <>
             <li>
               <Link to="/login">Log in</Link>

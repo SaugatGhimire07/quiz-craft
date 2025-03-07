@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth"; // Add this import
 import api from "../api/axios";
 import "../styles/login.css";
 import "../styles/fonts.css";
@@ -9,6 +10,7 @@ import Logo from "../components/Logo";
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const { login } = useAuth(); // Add this line
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,21 +29,17 @@ const LoginPage = () => {
 
       if (response.data.token) {
         localStorage.setItem("token", response.data.token);
-        localStorage.setItem(
-          "user",
-          JSON.stringify({
-            id: response.data._id,
-            name: response.data.name,
-            email: response.data.email,
-            isVerified: response.data.isVerified,
-          })
-        );
+        // Use the login function from auth context instead
+        login({
+          id: response.data._id,
+          name: response.data.name,
+          email: response.data.email,
+          isVerified: response.data.isVerified,
+        });
 
-        // Navigate to dashboard
         navigate("/dashboard");
       }
     } catch (error) {
-      // Handle unverified email
       if (error.response?.status === 403) {
         setError("Please verify your email to continue");
         setTimeout(() => {
@@ -55,7 +53,6 @@ const LoginPage = () => {
         return;
       }
 
-      // Handle invalid credentials
       setError(
         error.response?.data?.message ||
           "Login failed. Please check your credentials."
