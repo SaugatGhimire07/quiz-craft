@@ -1,42 +1,58 @@
+import { Link } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 import "../styles/navbar.css";
-
-//logo
 import logo from "../assets/logo/logo.png";
 
 const NavBar = () => {
+  const { user } = useAuth();
+
   return (
     <nav className="navbar">
       <div className="navbar-logo">
-        <a href="/">
+        <Link to="/">
           <img src={logo} alt="logo" className="img" />
-        </a>
+        </Link>
       </div>
       <ul className="navbar-links">
         <li>
-          <a href="/">Home</a>
+          <Link to="/">Home</Link>
         </li>
         <li>
-          <a href="/features">Features</a>
+          <Link to="/features">Features</Link>
         </li>
         <li>
-          <a href="/contact">How it works</a>
+          <Link to="/contact">How it works</Link>
         </li>
         <li>
-          <a href="/contact">Join Quiz</a>
+          <Link to="/join">Join Quiz</Link>
         </li>
       </ul>
 
       <ul className="navbar-auth">
-        <li>
-          <a href="/login">Log in</a>
-        </li>
-        <div className="signup">
-          <li>
-            <a href="/login" style={{ color: "white" }}>
-              Sign Up
-            </a>
-          </li>
-        </div>
+        {user ? (
+          // Show Dashboard button for logged-in users
+          <div className="signup">
+            <li>
+              <Link to="/dashboard" style={{ color: "white" }}>
+                Go to Dashboard
+              </Link>
+            </li>
+          </div>
+        ) : (
+          // Show Login and Sign Up for non-logged-in users
+          <>
+            <li>
+              <Link to="/login">Log in</Link>
+            </li>
+            <div className="signup">
+              <li>
+                <Link to="/signup" style={{ color: "white" }}>
+                  Sign Up
+                </Link>
+              </li>
+            </div>
+          </>
+        )}
       </ul>
     </nav>
   );
