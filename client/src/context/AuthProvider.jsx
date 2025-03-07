@@ -7,6 +7,7 @@ const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check for user data in localStorage on mount
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       setUser(JSON.parse(storedUser));
@@ -29,28 +30,21 @@ const AuthProvider = ({ children }) => {
     localStorage.removeItem("token");
   };
 
-  // Add verification status update method
-  const updateVerificationStatus = (isVerified) => {
-    if (user) {
-      const updatedUser = { ...user, isVerified };
-      setUser(updatedUser);
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-    }
+  const value = {
+    user,
+    login,
+    logout,
+    loading,
+    updateVerificationStatus: (isVerified) => {
+      if (user) {
+        const updatedUser = { ...user, isVerified };
+        setUser(updatedUser);
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+      }
+    },
   };
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        login,
-        logout,
-        loading,
-        updateVerificationStatus,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 AuthProvider.propTypes = {
