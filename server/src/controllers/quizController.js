@@ -1,5 +1,4 @@
 import Quiz from "../models/Quiz.js";
-import { nanoid } from "nanoid";
 import mongoose from "mongoose";
 import path from "path";
 import fs from "fs";
@@ -239,5 +238,71 @@ export const deleteQuiz = async (req, res) => {
       message: "Failed to delete quiz",
       error: error.message,
     });
+  }
+};
+
+// Add the new makeQuizLive function
+export const makeQuizLive = async (req, res) => {
+  try {
+    const quizId = req.params.id;
+
+    // Find and update the quiz status to "live"
+    const updatedQuiz = await Quiz.findOneAndUpdate(
+      { _id: quizId, createdBy: req.user._id },
+      { status: "live" },
+      { new: true }
+    );
+
+    if (!updatedQuiz) {
+      return res.status(404).json({ message: "Quiz not found or unauthorized" });
+    }
+
+    res.json(updatedQuiz);
+  } catch (error) {
+    console.error("Error making quiz live:", error);
+    res.status(500).json({ message: "Failed to make quiz live", error: error.message });
+  }
+};
+
+// Add the new endQuiz function
+export const endQuiz = async (req, res) => {
+  try {
+    const quizId = req.params.id;
+
+    // Find and update the quiz status to "draft"
+    const updatedQuiz = await Quiz.findOneAndUpdate(
+      { _id: quizId, createdBy: req.user._id },
+      { status: "draft" },
+      { new: true }
+    );
+
+    if (!updatedQuiz) {
+      return res.status(404).json({ message: "Quiz not found or unauthorized" });
+    }
+
+    // Remove all players associated with the quiz
+    await Player.deleteMany({ quizId: quizId });
+
+    res.json(updatedQuiz);
+  } catch (error) {
+    console.error("Error ending quiz:", error);
+    res.status(500).json({ message: "Failed to end quiz", error: error.message });
+  }
+};
+
+export const getQuizByGamePin = async (req, res) => {
+  try {
+    const { gamePin } = req.params;
+
+    const quiz = await Quiz.findOne({ gamePin });
+
+    if (!quiz) {
+      return res.status(404).json({ message: "Quiz not found" });
+    }
+
+    res.json(quiz);
+  } catch (error) {
+    console.error("Error fetching quiz by gamePin:", error);
+    res.status(500).json({ message: "Error fetching quiz by gamePin", error });
   }
 };

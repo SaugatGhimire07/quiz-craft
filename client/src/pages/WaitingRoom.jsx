@@ -1,50 +1,87 @@
 import React, { useState, useEffect } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { customAlphabet } from "nanoid";
+import api from "../api/axios";
 import backgroundImage from "../assets/home/waiting-room-background.jpg";
 import Logo from "../assets/logo/logo.png";
 import "../styles/waiting-room.css";
 
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 8);
+
 const WaitingRoom = () => {
-  const [gamePin, setGamePin] = useState("910 5829");
+  const { quizId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [gamePin, setGamePin] = useState("");
   const [isLocked, setIsLocked] = useState(false);
   const [players, setPlayers] = useState([]);
-
-  const playerNames = [
-    "Alex",
-    "Taylor",
-    "Jordan",
-    "Casey",
-    "Riley",
-    "Morgan",
-    "Quinn",
-    "Avery",
-    "Reese",
-    "Dakota",
-  ];
+  const [isHost, setIsHost] = useState(false);
 
   useEffect(() => {
-    // Simulate players joining (for demo purposes)
-    if (players.length < 8 && !isLocked) {
-      const interval = setInterval(() => {
-        const randomName =
-          playerNames[Math.floor(Math.random() * playerNames.length)];
-        if (!players.some((player) => player.name === randomName)) {
-          setPlayers((prev) => [
-            ...prev,
-            {
-              id: Date.now(),
-              name: randomName,
-            },
-          ]);
-        }
-      }, 3000);
+    const fetchQuizDetails = async () => {
+      try {
+        const response = await api.get(`/quiz/${quizId}`);
+        const quiz = response.data;
+        setGamePin(quiz.gamePin || nanoid()); // Generate a new game PIN if not already set
+        setIsHost(true); // Assuming the user is the host if they navigate here
+      } catch (error) {
+        console.error("Error fetching quiz details:", error);
+      }
+    };
 
+    fetchQuizDetails();
+  }, [quizId]);
+
+  useEffect(() => {
+    const fetchPlayers = async () => {
+      try {
+        const response = await api.get(`/players/${gamePin}`);
+        setPlayers(response.data);
+      } catch (error) {
+        console.error("Error fetching players:", error);
+      }
+    };
+
+    if (gamePin) {
+      fetchPlayers();
+      const interval = setInterval(fetchPlayers, 3000);
       return () => clearInterval(interval);
     }
-  }, [players, isLocked]);
+  }, [gamePin]);
+
+  useEffect(() => {
+    const checkQuizStatus = async () => {
+      try {
+        const response = await api.get(`/quiz/${quizId}`);
+        const quiz = response.data;
+
+        if (quiz.status === "draft") {
+          alert("The quiz has ended.");
+          navigate(location.state?.from || "/"); // Redirect to the previous page or home page
+        }
+      } catch (error) {
+        console.error("Error checking quiz status:", error);
+      }
+    };
+
+    const interval = setInterval(checkQuizStatus, 3000);
+    return () => clearInterval(interval);
+  }, [quizId, navigate, location.state]);
 
   const handleStartQuiz = () => {
     alert("Starting Quiz!");
     // Additional logic to start the quiz would go here
+  };
+
+  const handleEndQuiz = async () => {
+    try {
+      await api.post(`/quiz/${quizId}/end`);
+      alert("Quiz ended and status updated to draft.");
+      navigate(location.state?.from || "/"); // Redirect to the previous page or home page
+    } catch (error) {
+      console.error("Error ending quiz:", error);
+      alert("Failed to end the quiz. Please try again.");
+    }
   };
 
   const handleToggleLock = () => {
@@ -69,8 +106,6 @@ const WaitingRoom = () => {
             <h2>This game is locked - No one else can join</h2>
           </div>
         )}
-
-        <div className="qr-code"></div>
       </div>
 
       {/* Classroom content */}
@@ -91,7 +126,7 @@ const WaitingRoom = () => {
             {players.length > 0 && (
               <div className="player-list">
                 {players.map((player) => (
-                  <div key={player.id} className="player-name">
+                  <div key={player._id} className="player-name">
                     {player.name}
                   </div>
                 ))}
@@ -114,19 +149,24 @@ const WaitingRoom = () => {
           ))}
         </div>
 
-        {/* Game controls (Start and Lock buttons) */}
-        <div className="game-controls">
-          <button className="start-button" onClick={handleStartQuiz}>
-            Start
-          </button>
-          <button
-            className={`lock-button ${isLocked ? "locked" : "unlocked"}`}
-            onClick={handleToggleLock}
-            aria-label={isLocked ? "Unlock quiz" : "Lock quiz"}
-          >
-            <div className="lock-icon"></div>
-          </button>
-        </div>
+        {/* Game controls (Start, End, and Lock buttons) */}
+        {isHost && (
+          <div className="game-controls">
+            <button className="start-button" onClick={handleStartQuiz}>
+              Start
+            </button>
+            <button className="end-button" onClick={handleEndQuiz}>
+              End
+            </button>
+            <button
+              className={`lock-button ${isLocked ? "locked" : "unlocked"}`}
+              onClick={handleToggleLock}
+              aria-label={isLocked ? "Unlock quiz" : "Lock quiz"}
+            >
+              <div className="lock-icon"></div>
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="control-bar">

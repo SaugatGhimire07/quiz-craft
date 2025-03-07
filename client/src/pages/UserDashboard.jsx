@@ -84,7 +84,7 @@ const UserDashboard = () => {
     setActiveDropdown(activeDropdown === index ? null : index);
   };
 
-  // Handle making quiz live
+  // Function to make quiz live
   const handleMakeQuizLive = async (e, quizId) => {
     e.stopPropagation(); // Prevent card click
     try {
@@ -92,6 +92,8 @@ const UserDashboard = () => {
       // Refresh quizzes after update
       fetchQuizzes();
       setActiveDropdown(null);
+      // Navigate to the waiting room as host
+      navigate(`/waiting-room/${quizId}`);
     } catch (error) {
       console.error("Error making quiz live:", error);
     }

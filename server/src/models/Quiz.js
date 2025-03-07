@@ -1,4 +1,8 @@
 import mongoose from "mongoose";
+import { customAlphabet } from "nanoid";
+
+// Create a custom nanoid generator for game PINs
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 6);
 
 const quizSchema = new mongoose.Schema(
   {
@@ -21,6 +25,12 @@ const quizSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    // Add gamePin field
+    gamePin: {
+      type: String,
+      default: () => nanoid(), // Generate a new game PIN using nanoid
+      unique: true, // Ensure the game PIN is unique
+    },
     // Keep code field as non-unique
     code: {
       type: String,
@@ -29,7 +39,7 @@ const quizSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["draft", "published", "live"],
+      enum: ["draft", "published", "live", "closed"],
       default: "draft",
     },
   },

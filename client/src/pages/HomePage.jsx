@@ -11,24 +11,16 @@ import "../styles/home.css";
 //components
 import Navbar from "../components/NavBar";
 import Footer from "../components/Footer";
+import JoinQuiz from "../components/JoinQuiz";
 
 const HomePage = () => {
   return (
     <div className="container-home">
          <Navbar/>
          <div className="pincode-container">
-            <div className="enter-pincode-text">
-                Enter code to join live Quiz
-                 </div>
-
-            <div className="pincode-input-container">
-                <input type="text" placeholder="1234 5678" className="pincode-input" />
-                
-                </div>
-            <div className="pincode-button">
-                <button className="pincode-button-style">Join</button>
-                </div>
-        </div>
+        <h2 className="enter-pincode-text">Enter code to join live Quiz</h2>
+        <JoinQuiz />
+      </div>
         <div className="header-container">
             <h1 className="header">Create, Play and Learn with Interactive Quizzes!</h1>
             <p className="header-text">Empower your learning with fun, customizable quizzes tailored for students and educators alike</p>
