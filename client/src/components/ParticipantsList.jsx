@@ -9,8 +9,13 @@ const ParticipantsList = ({
   currentPlayerId,
   user,
 }) => {
+  // Filter out hosts and show only connected participants
+  const activePlayers = players.filter(
+    (player) => player.isConnected && !player.isHost && player.role !== "host"
+  );
+
   const renderParticipants = () => {
-    if (!Array.isArray(players) || players.length === 0) {
+    if (!Array.isArray(activePlayers) || activePlayers.length === 0) {
       return (
         <p className="no-participants">
           Share the game PIN with others to join!
@@ -20,7 +25,7 @@ const ParticipantsList = ({
 
     return (
       <div className="participant-grid">
-        {players.map((player) => {
+        {activePlayers.map((player) => {
           const isCurrentPlayer =
             !isHost &&
             (currentPlayerId === player._id ||
@@ -41,8 +46,12 @@ const ParticipantsList = ({
                 height="64"
                 loading="lazy"
               />
-              <span className="participant-name">{player.name}</span>
-              {isCurrentPlayer && <span className="you-badge">You</span>}
+              <span className="participant-name">
+                {isCurrentPlayer ? "You" : player.name}
+              </span>
+              {isCurrentPlayer && (
+                <span className="you-badge">Current Player</span>
+              )}
             </div>
           );
         })}
@@ -54,8 +63,8 @@ const ParticipantsList = ({
     <div className="waiting-message">
       <div className="participant-status">
         <h2 className="participant-header">
-          {players.length > 0
-            ? `Participants (${players.length})`
+          {activePlayers.length > 0
+            ? `Participants (${activePlayers.length})`
             : "Waiting for participants..."}
         </h2>
         {renderParticipants()}
@@ -64,6 +73,7 @@ const ParticipantsList = ({
   );
 };
 
+// Update PropTypes to include isConnected
 ParticipantsList.propTypes = {
   players: PropTypes.arrayOf(
     PropTypes.shape({
@@ -71,6 +81,7 @@ ParticipantsList.propTypes = {
       name: PropTypes.string.isRequired,
       avatarSeed: PropTypes.string,
       userId: PropTypes.string,
+      isConnected: PropTypes.bool,
     })
   ).isRequired,
   isHost: PropTypes.bool.isRequired,

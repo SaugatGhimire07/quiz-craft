@@ -11,6 +11,11 @@ const quizSessionSchema = new mongoose.Schema(
       ref: "Quiz",
       required: true,
     },
+    hostId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
     pin: {
       type: String,
       default: () => generatePin(),

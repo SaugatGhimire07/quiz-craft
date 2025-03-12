@@ -7,6 +7,11 @@ import fs from "fs";
 import { nanoid } from "nanoid";
 import { emitParticipantJoined } from "../utils/socketEvents.js";
 import { customAlphabet } from "nanoid";
+import { fileURLToPath } from "url";
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 let gfs;
 mongoose.connection.once("open", () => {
@@ -182,10 +187,10 @@ export const deleteQuiz = async (req, res) => {
       for (const question of quiz.questions) {
         if (question.imageFilename) {
           try {
-            // Delete image file from server
+            // Update image path resolution
             const imagePath = path.join(
-              __dirname,
-              "../../public/uploads",
+              path.dirname(__dirname), // Go up one level from controllers
+              "../public/uploads",
               question.imageFilename
             );
             if (fs.existsSync(imagePath)) {
@@ -302,6 +307,7 @@ export const getOrCreateQuizSession = async (req, res) => {
     if (!session) {
       session = new QuizSession({
         quizId,
+        hostId: quiz.createdBy, // Add the quiz creator as host
         isActive: true,
       });
       await session.save();
@@ -312,6 +318,7 @@ export const getOrCreateQuizSession = async (req, res) => {
       pin: session.pin,
       isActive: session.isActive,
       createdAt: session.createdAt,
+      hostId: session.hostId, // Include hostId in response
     });
   } catch (error) {
     console.error("Session error:", error);
@@ -356,7 +363,7 @@ export const startQuizSession = async (req, res) => {
 
 export const joinQuizSession = async (req, res) => {
   try {
-    const { pin, playerName } = req.body;
+    const { pin, playerName, userId } = req.body;
 
     // Validate request body
     if (!pin || !playerName) {
@@ -365,7 +372,7 @@ export const joinQuizSession = async (req, res) => {
       });
     }
 
-    // Find session and check its status
+    // Find session and quiz
     const session = await QuizSession.findOne({ pin });
     if (!session) {
       return res.status(404).json({
@@ -373,15 +380,7 @@ export const joinQuizSession = async (req, res) => {
       });
     }
 
-    // Check if quiz has already started
-    if (!session.isActive || session.startedAt) {
-      return res.status(403).json({
-        message:
-          "This quiz has already started and is not accepting new participants",
-      });
-    }
-
-    // Verify quiz exists and is live
+    // Find the quiz and check if user is the host
     const quiz = await Quiz.findOne({
       _id: session.quizId,
       status: "live",
@@ -393,24 +392,25 @@ export const joinQuizSession = async (req, res) => {
       });
     }
 
-    // Create new player with clean name as seed
+    // Check if the user is the quiz creator/host
+    if (userId && quiz.createdBy.toString() === userId) {
+      return res.status(403).json({
+        message: "Quiz host cannot join as a participant",
+      });
+    }
+
+    // Create new player
     const player = new Player({
       name: playerName,
       sessionId: session._id,
       quizId: quiz._id,
+      userId: userId || null,
       avatarSeed: playerName.toLowerCase().replace(/[^a-z0-9]/g, ""),
       isConnected: true,
+      role: "participant",
     });
     await player.save();
 
-    // Emit socket event for new participant
-    emitParticipantJoined(pin, {
-      id: player._id,
-      name: player.name,
-      avatarSeed: player.avatarSeed,
-    });
-
-    // Return success response
     res.status(201).json({
       quizId: quiz._id,
       sessionId: session._id,
@@ -418,6 +418,7 @@ export const joinQuizSession = async (req, res) => {
         id: player._id,
         name: player.name,
         avatarSeed: player.avatarSeed,
+        role: "participant",
       },
     });
   } catch (error) {
@@ -426,5 +427,56 @@ export const joinQuizSession = async (req, res) => {
       message: "Failed to join quiz",
       error: error.message,
     });
+  }
+};
+
+export const publishQuiz = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const { hostId } = req.body;
+
+    // Verify that the host is the quiz creator
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) {
+      return res.status(404).json({ message: "Quiz not found" });
+    }
+
+    if (quiz.createdBy.toString() !== hostId) {
+      return res.status(403).json({
+        message: "Only the quiz creator can make the quiz live",
+      });
+    }
+
+    // Create or get active session
+    const session = await QuizSession.findOneAndUpdate(
+      {
+        quizId,
+        isActive: true,
+      },
+      {
+        quizId,
+        hostId: hostId,
+        isActive: true,
+      },
+      {
+        new: true,
+        upsert: true, // Create if doesn't exist
+        setDefaultsOnInsert: true,
+      }
+    );
+
+    // Update quiz status
+    quiz.status = "live";
+    await quiz.save();
+
+    res.json({
+      message: "Quiz is now live",
+      sessionId: session._id,
+      pin: session.pin,
+      hostId: hostId,
+    });
+  } catch (error) {
+    console.error("Error publishing quiz:", error);
+    res.status(500).json({ message: "Failed to publish quiz" });
   }
 };

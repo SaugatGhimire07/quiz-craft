@@ -126,34 +126,45 @@ const WaitingRoom = () => {
     // Join room
     socket.emit("joinQuizRoom", {
       pin: gamePin,
-      playerName: isHost ? "Host" : playerName,
-      playerId: location.state?.playerId,
+      playerName: isHost ? "Quiz Host" : playerName, // Add host name
+      playerId: isHost ? null : location.state?.playerId, // Don't send playerId for host
+      isHost: isHost, // Explicitly mark host role
+      userId: user?._id,
     });
 
     // Socket event listeners
-    socket.on("participantJoined", ({ id, name, avatarSeed, userId }) => {
-      if (mounted) {
-        setPlayers((prevPlayers) => {
-          const isDuplicate = prevPlayers.some((player) => player._id === id);
+    socket.on(
+      "participantJoined",
+      ({ id, name, avatarSeed, userId, isHost }) => {
+        if (mounted) {
+          setPlayers((prevPlayers) => {
+            // Don't add host to players list
+            if (isHost) return prevPlayers;
 
-          if (!isDuplicate) {
-            const newPlayers = [
-              ...prevPlayers,
-              {
-                _id: id,
-                name,
-                avatarSeed, // Use the avatarSeed from server
-                userId, // Store userId for identification
-                isCurrentPlayer: location.state?.playerId === id, // Add isCurrentPlayer flag
-              },
-            ];
-            setPlayerCount(newPlayers.length);
-            return newPlayers;
-          }
-          return prevPlayers;
-        });
+            const isDuplicate = prevPlayers.some((player) => player._id === id);
+
+            if (!isDuplicate) {
+              const newPlayers = [
+                ...prevPlayers,
+                {
+                  _id: id,
+                  name,
+                  avatarSeed,
+                  userId,
+                  isHost: false, // Ensure hosts are never added as players
+                  isCurrentPlayer: location.state?.playerId === id,
+                  isConnected: true,
+                  role: "participant",
+                },
+              ];
+              setPlayerCount(newPlayers.length); // Update count only for actual participants
+              return newPlayers;
+            }
+            return prevPlayers;
+          });
+        }
       }
-    });
+    );
 
     socket.on("playerLeft", ({ playerId }) => {
       if (mounted) {

@@ -51,7 +51,6 @@ export const getSessionParticipants = async (req, res) => {
   try {
     const { pin } = req.params;
 
-    // Find the active session for this PIN
     const session = await QuizSession.findOne({
       pin,
       isActive: true,
@@ -63,24 +62,25 @@ export const getSessionParticipants = async (req, res) => {
       });
     }
 
-    // Get all connected participants with additional fields
+    // Only get participants (not hosts) who are connected
     const participants = await Player.find({
       sessionId: session._id,
       isConnected: true,
+      isHost: { $ne: true }, // Exclude hosts from the query
     })
       .select("_id name avatarSeed userId isHost")
-      .populate("userId", "_id name"); // Populate user details if available
+      .populate("userId", "_id name");
 
     res.json({
       sessionId: session._id,
       participants: participants.map((p) => ({
         _id: p._id,
-        name: p.name,
+        name: p.name, // No need to check isHost here since we filtered them out
         userId: p.userId?._id || null,
         userName: p.userId?.name || p.name,
         avatarSeed: p.avatarSeed,
-        isHost: p.isHost || false,
         isConnected: true,
+        role: "participant",
       })),
     });
   } catch (error) {

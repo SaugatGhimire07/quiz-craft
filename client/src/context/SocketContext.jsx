@@ -12,6 +12,8 @@ export const SocketProvider = ({ children }) => {
     reconnection: true,
     reconnectionDelay: 1000,
     reconnectionAttempts: 5,
+    autoConnect: true,
+    timeout: 10000,
   });
 
   useEffect(() => {

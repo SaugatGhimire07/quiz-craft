@@ -88,12 +88,26 @@ const UserDashboard = () => {
   const handleMakeQuizLive = async (e, quizId) => {
     e.stopPropagation(); // Prevent card click
     try {
-      await api.patch(`/quiz/${quizId}/publish`);
+      // Get the host's userId from the auth context
+      const hostId = user._id;
+
+      // Make the quiz live and send the hostId
+      const response = await api.patch(`/quiz/${quizId}/publish`, {
+        hostId: hostId,
+      });
+
+      // Navigate to waiting room with host information
+      navigate(`/waiting-room/${quizId}`, {
+        state: {
+          isHost: true,
+          hostId: hostId,
+          sessionId: response.data.sessionId,
+        },
+      });
+
       // Refresh quizzes after update
       fetchQuizzes();
       setActiveDropdown(null);
-      // Navigate to the waiting room as host
-      navigate(`/waiting-room/${quizId}`);
     } catch (error) {
       console.error("Error making quiz live:", error);
     }
