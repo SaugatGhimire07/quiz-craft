@@ -1,7 +1,12 @@
 import Quiz from "../models/Quiz.js";
+import QuizSession from "../models/QuizSession.js";
+import Player from "../models/Player.js";
 import mongoose from "mongoose";
 import path from "path";
 import fs from "fs";
+import { nanoid } from "nanoid";
+import { emitParticipantJoined } from "../utils/socketEvents.js";
+import { customAlphabet } from "nanoid";
 
 let gfs;
 mongoose.connection.once("open", () => {
@@ -47,86 +52,53 @@ export const createQuiz = async (req, res) => {
   const { title, questions } = req.body;
 
   try {
-    // Validate required fields
     if (!title || !questions || !questions.length) {
-      return res.status(400).json({
-        message: "Title and questions are required",
-      });
+      return res
+        .status(400)
+        .json({ message: "Title and questions are required" });
     }
-
-    // Process questions to preserve image data
-    const processedQuestions = questions.map((question) => {
-      // Keep image URL and filename if they exist
-      return {
-        questionText: question.questionText,
-        options: question.options,
-        correctOption: question.correctOption,
-        image: question.image,
-        imageId: question.imageId,
-      };
-    });
 
     const newQuiz = new Quiz({
       title,
-      questions: processedQuestions,
-      createdBy: req.user._id, // This comes from protect middleware
-      status: "draft", // Set initial status as draft
-      // Not setting any code field here
+      questions,
+      createdBy: req.user._id,
+      status: "draft",
     });
 
     const savedQuiz = await newQuiz.save();
     res.status(201).json(savedQuiz);
   } catch (error) {
-    console.error("Quiz creation error:", error);
-    res.status(500).json({
-      message: "Failed to create quiz",
-      error: error.message,
-    });
+    res
+      .status(500)
+      .json({ message: "Failed to create quiz", error: error.message });
   }
 };
 
 export const getUserQuizzes = async (req, res) => {
   try {
-    if (!req.user?._id) {
-      return res.status(401).json({ message: "User not authenticated" });
-    }
-
     const quizzes = await Quiz.find({ createdBy: req.user._id }).sort({
       createdAt: -1,
     });
-
     res.json(quizzes);
   } catch (error) {
-    console.error("Error fetching user quizzes:", error);
-    res.status(500).json({
-      message: "Failed to fetch quizzes",
-      error: error.message,
-    });
+    res
+      .status(500)
+      .json({ message: "Failed to fetch quizzes", error: error.message });
   }
 };
 
 export const getQuiz = async (req, res) => {
   try {
-    if (!req.user?._id) {
-      return res.status(401).json({ message: "User not authenticated" });
-    }
-
     const quiz = await Quiz.findOne({
       _id: req.params.id,
       createdBy: req.user._id,
     });
-
-    if (!quiz) {
-      return res.status(404).json({ message: "Quiz not found" });
-    }
-
+    if (!quiz) return res.status(404).json({ message: "Quiz not found" });
     res.json(quiz);
   } catch (error) {
-    console.error("Error fetching quiz:", error);
-    res.status(500).json({
-      message: "Failed to fetch quiz",
-      error: error.message,
-    });
+    res
+      .status(500)
+      .json({ message: "Failed to fetch quiz", error: error.message });
   }
 };
 
@@ -241,52 +213,48 @@ export const deleteQuiz = async (req, res) => {
   }
 };
 
-// Add the new makeQuizLive function
 export const makeQuizLive = async (req, res) => {
   try {
-    const quizId = req.params.id;
+    const quiz = await Quiz.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id,
+    });
+    if (!quiz)
+      return res
+        .status(404)
+        .json({ message: "Quiz not found or unauthorized" });
 
-    // Find and update the quiz status to "live"
-    const updatedQuiz = await Quiz.findOneAndUpdate(
-      { _id: quizId, createdBy: req.user._id },
-      { status: "live" },
-      { new: true }
-    );
-
-    if (!updatedQuiz) {
-      return res.status(404).json({ message: "Quiz not found or unauthorized" });
-    }
-
-    res.json(updatedQuiz);
+    if (!quiz.gamePin) quiz.gamePin = nanoid(6);
+    quiz.status = "live";
+    await quiz.save();
+    res.json(quiz);
   } catch (error) {
-    console.error("Error making quiz live:", error);
-    res.status(500).json({ message: "Failed to make quiz live", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Failed to make quiz live", error: error.message });
   }
 };
 
-// Add the new endQuiz function
 export const endQuiz = async (req, res) => {
   try {
-    const quizId = req.params.id;
-
-    // Find and update the quiz status to "draft"
     const updatedQuiz = await Quiz.findOneAndUpdate(
-      { _id: quizId, createdBy: req.user._id },
+      { _id: req.params.id, createdBy: req.user._id },
       { status: "draft" },
       { new: true }
     );
 
     if (!updatedQuiz) {
-      return res.status(404).json({ message: "Quiz not found or unauthorized" });
+      return res
+        .status(404)
+        .json({ message: "Quiz not found or unauthorized" });
     }
 
-    // Remove all players associated with the quiz
-    await Player.deleteMany({ quizId: quizId });
-
+    await Player.deleteMany({ quizId: req.params.id });
     res.json(updatedQuiz);
   } catch (error) {
-    console.error("Error ending quiz:", error);
-    res.status(500).json({ message: "Failed to end quiz", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Failed to end quiz", error: error.message });
   }
 };
 
@@ -304,5 +272,159 @@ export const getQuizByGamePin = async (req, res) => {
   } catch (error) {
     console.error("Error fetching quiz by gamePin:", error);
     res.status(500).json({ message: "Error fetching quiz by gamePin", error });
+  }
+};
+
+export const getOrCreateQuizSession = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+
+    // Find quiz
+    const quiz = await Quiz.findOne({
+      _id: quizId,
+      status: "live",
+    });
+
+    if (!quiz) {
+      return res.status(404).json({
+        message: "Quiz not found or not active",
+      });
+    }
+
+    // Look for an active session
+    let session = await QuizSession.findOne({
+      quizId,
+      isActive: true,
+      startedAt: null,
+    });
+
+    // Create new session if none exists
+    if (!session) {
+      session = new QuizSession({
+        quizId,
+        isActive: true,
+      });
+      await session.save();
+    }
+
+    res.json({
+      sessionId: session._id,
+      pin: session.pin,
+      isActive: session.isActive,
+      createdAt: session.createdAt,
+    });
+  } catch (error) {
+    console.error("Session error:", error);
+    res.status(500).json({
+      message: "Failed to get quiz session",
+      error: error.message,
+    });
+  }
+};
+
+export const startQuizSession = async (req, res) => {
+  try {
+    const quiz = await Quiz.findOne({
+      _id: req.params.quizId,
+      createdBy: req.user._id,
+    });
+    if (!quiz)
+      return res
+        .status(404)
+        .json({ message: "Quiz not found or unauthorized" });
+
+    const session = await QuizSession.findOneAndUpdate(
+      { quizId: req.params.quizId, isActive: true, startedAt: null },
+      { isActive: false, startedAt: new Date() },
+      { new: true }
+    );
+
+    if (!session)
+      return res.status(404).json({ message: "No active session found" });
+
+    res.json({
+      sessionId: session._id,
+      startedAt: session.startedAt,
+      isActive: session.isActive,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Failed to start session", error: error.message });
+  }
+};
+
+export const joinQuizSession = async (req, res) => {
+  try {
+    const { pin, playerName } = req.body;
+
+    // Validate request body
+    if (!pin || !playerName) {
+      return res.status(400).json({
+        message: "PIN and player name are required",
+      });
+    }
+
+    // Find session and check its status
+    const session = await QuizSession.findOne({ pin });
+    if (!session) {
+      return res.status(404).json({
+        message: "Invalid PIN. Please check and try again.",
+      });
+    }
+
+    // Check if quiz has already started
+    if (!session.isActive || session.startedAt) {
+      return res.status(403).json({
+        message:
+          "This quiz has already started and is not accepting new participants",
+      });
+    }
+
+    // Verify quiz exists and is live
+    const quiz = await Quiz.findOne({
+      _id: session.quizId,
+      status: "live",
+    });
+
+    if (!quiz) {
+      return res.status(404).json({
+        message: "Quiz not found or is no longer active",
+      });
+    }
+
+    // Create new player with clean name as seed
+    const player = new Player({
+      name: playerName,
+      sessionId: session._id,
+      quizId: quiz._id,
+      avatarSeed: playerName.toLowerCase().replace(/[^a-z0-9]/g, ""),
+      isConnected: true,
+    });
+    await player.save();
+
+    // Emit socket event for new participant
+    emitParticipantJoined(pin, {
+      id: player._id,
+      name: player.name,
+      avatarSeed: player.avatarSeed,
+    });
+
+    // Return success response
+    res.status(201).json({
+      quizId: quiz._id,
+      sessionId: session._id,
+      player: {
+        id: player._id,
+        name: player.name,
+        avatarSeed: player.avatarSeed,
+      },
+    });
+  } catch (error) {
+    console.error("Error joining quiz:", error);
+    res.status(500).json({
+      message: "Failed to join quiz",
+      error: error.message,
+    });
   }
 };

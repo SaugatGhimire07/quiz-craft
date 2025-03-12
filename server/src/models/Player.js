@@ -11,6 +11,28 @@ const playerSchema = new mongoose.Schema(
       ref: "Quiz",
       required: true,
     },
+    sessionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "QuizSession",
+      required: true,
+    },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    avatarSeed: {
+      type: String,
+      required: true,
+    },
+    isHost: {
+      type: Boolean,
+      default: false,
+    },
+    isConnected: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );
