@@ -3,8 +3,8 @@ export const getOrCreateAvatar = (playerId, quizId) => {
   let avatarSeed = sessionStorage.getItem(storageKey);
 
   if (!avatarSeed) {
-    // Generate a deterministic seed based on playerId
-    avatarSeed = `${playerId}-${Date.now()}`;
+    // Generate a deterministic seed using only playerId
+    avatarSeed = `avatar_${playerId}`;
     sessionStorage.setItem(storageKey, avatarSeed);
   }
 

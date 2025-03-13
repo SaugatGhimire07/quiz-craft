@@ -134,6 +134,43 @@ export const useParticipants = (
     };
   }, [gamePin, isHost, playerName, location.state?.playerId, quizId, navigate]);
 
+  useEffect(() => {
+    if (!gamePin) return;
+
+    // Request avatar sync when joining
+    socket.emit("requestAvatarSync", { pin: gamePin });
+
+    // Listen for avatar updates from other clients
+    socket.on("avatarsUpdate", ({ avatars }) => {
+      // Update local storage with received avatars
+      Object.entries(avatars).forEach(([playerId, seed]) => {
+        const storageKey = `avatar_${playerId}_${quizId}`;
+        sessionStorage.setItem(storageKey, seed);
+      });
+
+      // Trigger re-render of participants
+      setPlayers((currentPlayers) => [...currentPlayers]);
+    });
+
+    // Handle avatar sync requests
+    socket.on("requestAvatarSync", () => {
+      // Collect all avatar seeds from sessionStorage
+      const avatars = {};
+      players.forEach((player) => {
+        const seed = sessionStorage.getItem(`avatar_${player._id}_${quizId}`);
+        if (seed) avatars[player._id] = seed;
+      });
+
+      // Share avatars with other clients
+      socket.emit("syncAvatars", { pin: gamePin, avatars });
+    });
+
+    return () => {
+      socket.off("avatarsUpdate");
+      socket.off("requestAvatarSync");
+    };
+  }, [gamePin, quizId, players, socket]);
+
   return {
     players,
     playerCount,
