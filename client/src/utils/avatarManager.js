@@ -3,8 +3,8 @@ export const getOrCreateAvatar = (playerId, quizId) => {
   let avatarSeed = sessionStorage.getItem(storageKey);
 
   if (!avatarSeed) {
-    // Generate a random seed if none exists
-    avatarSeed = Math.random().toString(36).substring(2, 15);
+    // Generate a deterministic seed based on playerId
+    avatarSeed = `${playerId}-${Date.now()}`;
     sessionStorage.setItem(storageKey, avatarSeed);
   }
 
