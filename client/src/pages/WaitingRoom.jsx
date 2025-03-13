@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { io } from "socket.io-client";
 import { generateAvatar } from "../utils/avatarGenerator";
+import { getOrCreateAvatar } from "../utils/avatarManager";
 import api from "../api/axios";
 import Logo from "../assets/logo/logo-only.png";
 import HeaderLeft from "../assets/waiting-room/header_left.png";
@@ -29,17 +30,6 @@ const WaitingRoom = () => {
 
   // Add userId state
   const [currentUserId, setCurrentUserId] = useState(user?._id || null);
-
-  // Modify the avatar generation useMemo
-  const playerAvatars = useMemo(() => {
-    if (!players.length) return {};
-
-    return players.reduce((acc, player) => {
-      // Use avatarSeed from player data instead of name
-      acc[player._id] = generateAvatar(player.avatarSeed || player.name);
-      return acc;
-    }, {});
-  }, [players]);
 
   // Fetch initial session and player data
   useEffect(() => {
@@ -112,8 +102,18 @@ const WaitingRoom = () => {
           `/players/session/${gamePin}/participants`
         );
         if (mounted) {
-          setPlayers(response.data.participants);
-          setPlayerCount(response.data.participants.length);
+          const updatedParticipants = response.data.participants.map(
+            (participant) => {
+              return {
+                ...participant,
+                avatarSeed:
+                  participant.avatarSeed ||
+                  getOrCreateAvatar(participant._id, quizId),
+              };
+            }
+          );
+          setPlayers(updatedParticipants);
+          setPlayerCount(updatedParticipants.length);
         }
       } catch (error) {
         console.error("Error fetching participants:", error);
@@ -138,26 +138,29 @@ const WaitingRoom = () => {
       ({ id, name, avatarSeed, userId, isHost }) => {
         if (mounted) {
           setPlayers((prevPlayers) => {
-            // Don't add host to players list
             if (isHost) return prevPlayers;
 
             const isDuplicate = prevPlayers.some((player) => player._id === id);
 
             if (!isDuplicate) {
+              // Always store the server-provided avatar seed
+              const storageKey = `avatar_${id}_${quizId}`;
+              sessionStorage.setItem(storageKey, avatarSeed);
+
               const newPlayers = [
                 ...prevPlayers,
                 {
                   _id: id,
                   name,
-                  avatarSeed,
+                  avatarSeed, // Use the server-provided seed directly
                   userId,
-                  isHost: false, // Ensure hosts are never added as players
+                  isHost: false,
                   isCurrentPlayer: location.state?.playerId === id,
                   isConnected: true,
                   role: "participant",
                 },
               ];
-              setPlayerCount(newPlayers.length); // Update count only for actual participants
+              setPlayerCount(newPlayers.length);
               return newPlayers;
             }
             return prevPlayers;
@@ -201,6 +204,12 @@ const WaitingRoom = () => {
           pin: gamePin,
           playerId: location.state?.playerId,
         });
+
+        // Only remove the leaving player's avatar
+        if (location.state?.playerId) {
+          const participantKey = `avatar_${location.state.playerId}_${quizId}`;
+          sessionStorage.removeItem(participantKey);
+        }
       }
 
       socket.off("participantJoined");
@@ -224,23 +233,17 @@ const WaitingRoom = () => {
   const handleEndQuiz = async () => {
     try {
       await api.post(`/quiz/${quizId}/end`);
+      // Clear avatar data for this quiz
+      Object.keys(sessionStorage).forEach((key) => {
+        if (key.includes(`avatar_${quizId}`)) {
+          sessionStorage.removeItem(key);
+        }
+      });
       alert("Quiz ended and status updated to draft.");
-      navigate(location.state?.from || "/"); // Redirect to the previous page or home page
+      navigate(location.state?.from || "/");
     } catch (error) {
       console.error("Error ending quiz:", error);
       alert("Failed to end the quiz. Please try again.");
-    }
-  };
-
-  const fetchParticipants = async () => {
-    try {
-      const response = await api.get(
-        `/players/session/${gamePin}/participants`
-      );
-      setPlayers(response.data.participants);
-      setPlayerCount(response.data.participants.length);
-    } catch (error) {
-      console.error("Error fetching participants:", error);
     }
   };
 
@@ -248,17 +251,29 @@ const WaitingRoom = () => {
   const handleLeaveQuiz = async () => {
     try {
       if (!isHost && location.state?.playerId) {
+        // Clean up avatar data for this participant
+        const participantKey = `avatar_${location.state.playerId}_${quizId}`;
+        sessionStorage.removeItem(participantKey);
+
         // Emit socket event to notify others
         socket.emit("leaveQuizRoom", {
           pin: gamePin,
           playerId: location.state.playerId,
         });
 
+        // Update player status in database
+        await api.post(`/players/${location.state.playerId}/leave`);
+
+        // Disconnect socket
+        socket.disconnect();
+
         // Navigate back to home
         navigate("/");
       }
     } catch (error) {
       console.error("Error leaving quiz:", error);
+      // Still try to navigate away even if there's an error
+      navigate("/");
     }
   };
 
@@ -275,11 +290,12 @@ const WaitingRoom = () => {
     return (
       <div className="participant-grid">
         {players.map((player) => {
-          // Identify current player using both playerId and userId
           const isCurrentPlayer =
             !isHost &&
             (location.state?.playerId === player._id ||
               (user && user._id === player.userId));
+
+          const avatarSeed = getOrCreateAvatar(player._id, quizId);
 
           return (
             <div
@@ -289,7 +305,7 @@ const WaitingRoom = () => {
               }`}
             >
               <img
-                src={generateAvatar(player.avatarSeed || player.name)}
+                src={generateAvatar(avatarSeed)}
                 alt={`${isCurrentPlayer ? "Your" : `${player.name}'s`} avatar`}
                 className="participant-avatar"
                 width="64"
