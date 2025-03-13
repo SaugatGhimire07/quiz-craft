@@ -1,37 +1,86 @@
 const avatarSeeds = new Map(); // Store avatar seeds by room
+const connectedUsers = new Map(); // Store connected users by socket id
 
-// In your socket.io server setup
 io.on("connection", (socket) => {
-  // Add new socket events for avatar syncing
+  socket.on(
+    "joinQuizRoom",
+    async ({ pin, playerName, playerId, isHost, userId }) => {
+      try {
+        socket.join(pin);
+
+        // Initialize room's avatar seeds if not exists
+        if (!avatarSeeds.has(pin)) {
+          avatarSeeds.set(pin, new Map());
+        }
+
+        if (!isHost && playerId) {
+          // Generate deterministic avatar seed for new player if not already existing
+          if (!avatarSeeds.get(pin).has(playerId)) {
+            const avatarSeed = `avatar_${playerId}`;
+            avatarSeeds.get(pin).set(playerId, avatarSeed);
+          }
+
+          // Broadcast updated avatar list to all clients (including the new player)
+          const allAvatars = Object.fromEntries(avatarSeeds.get(pin));
+          io.in(pin).emit("avatarsUpdate", {
+            avatars: allAvatars,
+          });
+        }
+
+        // Store connection info
+        connectedUsers.set(socket.id, { pin, playerId, isHost });
+      } catch (error) {
+        console.error("Error in joinQuizRoom:", error);
+        socket.emit("error", { message: "Failed to join quiz room" });
+      }
+    }
+  );
+
+  // Handle manual avatar sync from clients
   socket.on("syncAvatars", ({ pin, avatars }) => {
-    // Store received avatars
     if (!avatarSeeds.has(pin)) {
       avatarSeeds.set(pin, new Map());
     }
+
+    // Update seeds on server
     Object.entries(avatars).forEach(([playerId, seed]) => {
       avatarSeeds.get(pin).set(playerId, seed);
     });
 
-    // Broadcast to others in room
-    socket.to(pin).emit("avatarsUpdate", { avatars });
+    // Broadcast updated avatars to all clients
+    io.in(pin).emit("avatarsUpdate", {
+      avatars: Object.fromEntries(avatarSeeds.get(pin)),
+    });
   });
 
+  // Handle avatar sync request from clients
   socket.on("requestAvatarSync", ({ pin }) => {
-    // Send stored avatars for the room
-    const roomAvatars = avatarSeeds.get(pin);
-    if (roomAvatars) {
-      const avatars = Object.fromEntries(roomAvatars);
-      socket.emit("avatarsUpdate", { avatars });
+    if (avatarSeeds.has(pin)) {
+      const allAvatars = Object.fromEntries(avatarSeeds.get(pin));
+      socket.emit("avatarsUpdate", { avatars: allAvatars });
     }
   });
 
-  // Clean up when room is closed
+  // Clean up on disconnect
   socket.on("disconnect", () => {
-    const rooms = [...socket.rooms];
-    rooms.forEach((pin) => {
-      if (avatarSeeds.has(pin)) {
-        avatarSeeds.delete(pin);
+    const userData = connectedUsers.get(socket.id);
+    if (userData) {
+      const { pin, playerId } = userData;
+
+      if (playerId && avatarSeeds.has(pin)) {
+        avatarSeeds.get(pin).delete(playerId);
+
+        // Cleanup if room is empty
+        if (avatarSeeds.get(pin).size === 0) {
+          avatarSeeds.delete(pin);
+        } else {
+          io.in(pin).emit("avatarsUpdate", {
+            avatars: Object.fromEntries(avatarSeeds.get(pin)),
+          });
+        }
       }
-    });
+
+      connectedUsers.delete(socket.id);
+    }
   });
 });
