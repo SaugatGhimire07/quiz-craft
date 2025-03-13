@@ -13,15 +13,10 @@ import JoinQuiz from "../components/JoinQuiz";
 const HomePage = () => {
   return (
     <div className="container-home">
-         <Navbar/>
-         <div className="pincode-container">
+      <Navbar />
+      <div className="pincode-container">
         <h2 className="enter-pincode-text">Enter code to join live Quiz</h2>
         <JoinQuiz />
-      </div>
-        <div className="header-container">
-            <h1 className="header">Create, Play and Learn with Interactive Quizzes!</h1>
-            <p className="header-text">Empower your learning with fun, customizable quizzes tailored for students and educators alike</p>
-        </div>
       </div>
       <div className="header-container">
         <h1 className="header">
