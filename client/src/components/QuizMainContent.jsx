@@ -11,6 +11,7 @@ const QuizMainContent = ({
   handleDrop,
   removeImage,
   fileInputRef,
+  readOnly,
 }) => {
   const hasImage = questions[selectedQuestionIndex]?.image;
 
@@ -32,6 +33,7 @@ const QuizMainContent = ({
           }
           required
           placeholder="Ask your question here..."
+          readOnly={readOnly}
         />
 
         {questions[selectedQuestionIndex].image && (
@@ -66,6 +68,7 @@ const QuizMainContent = ({
                       }}
                       placeholder={`Option ${optionIndex + 1}`}
                       className="option-input"
+                      readOnly={readOnly}
                     />
                     {option && (
                       <div
@@ -76,11 +79,13 @@ const QuizMainContent = ({
                             : ""
                         }`}
                         onClick={() => {
-                          handleQuestionChange(
-                            selectedQuestionIndex,
-                            "correctOption",
-                            option
-                          );
+                          if (!readOnly) {
+                            handleQuestionChange(
+                              selectedQuestionIndex,
+                              "correctOption",
+                              option
+                            );
+                          }
                         }}
                       >
                         <div className="radio-inner"></div>
@@ -109,11 +114,13 @@ const QuizMainContent = ({
                     : ""
                 }`}
                 onClick={() => {
-                  handleQuestionChange(
-                    selectedQuestionIndex,
-                    "correctOption",
-                    "True"
-                  );
+                  if (!readOnly) {
+                    handleQuestionChange(
+                      selectedQuestionIndex,
+                      "correctOption",
+                      "True"
+                    );
+                  }
                 }}
               >
                 <div className="radio-inner"></div>
@@ -135,11 +142,13 @@ const QuizMainContent = ({
                     : ""
                 }`}
                 onClick={() => {
-                  handleQuestionChange(
-                    selectedQuestionIndex,
-                    "correctOption",
-                    "False"
-                  );
+                  if (!readOnly) {
+                    handleQuestionChange(
+                      selectedQuestionIndex,
+                      "correctOption",
+                      "False"
+                    );
+                  }
                 }}
               >
                 <div className="radio-inner"></div>
@@ -162,6 +171,7 @@ QuizMainContent.propTypes = {
   handleDrop: PropTypes.func.isRequired,
   removeImage: PropTypes.func.isRequired,
   fileInputRef: PropTypes.object.isRequired,
+  readOnly: PropTypes.bool,
 };
 
 export default QuizMainContent;

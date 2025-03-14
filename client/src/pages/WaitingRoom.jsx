@@ -1,16 +1,15 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { generateAvatar } from "../utils/avatarGenerator";
 import { getOrCreateAvatar } from "../utils/avatarManager";
 import api from "../api/axios";
 import Logo from "../assets/logo/logo-only.png";
-import HeaderLeft from "../assets/waiting-room/header_left.png";
-import HeaderRight from "../assets/waiting-room/header_right.png";
 import "../styles/waiting-room.css";
 import { useAuth } from "../hooks/useAuth";
 import ParticipantsList from "../components/ParticipantsList";
 import { useQuizSession } from "../hooks/useQuizSession";
 import { useParticipants } from "../hooks/useParticipants";
+import BackgroundTheme from "../components/BackgroundTheme";
 
 const WaitingRoom = () => {
   const { user } = useAuth();
@@ -39,6 +38,8 @@ const WaitingRoom = () => {
       await api.post(`/quiz/${quizId}/session/start`);
       // Emit socket event to start quiz
       socket.emit("startQuiz", { pin: gamePin });
+      // Navigate to LiveQuiz page
+      navigate(`/live/${quizId}`);
     } catch (error) {
       console.error("Error starting quiz:", error);
       alert("Failed to start the quiz. Please try again.");
@@ -136,10 +137,7 @@ const WaitingRoom = () => {
 
   return (
     <div className="waiting-room">
-      <div className="background-theme">
-        <img src={HeaderLeft} alt="" className="bg-img-left" />
-        <img src={HeaderRight} alt="" className="bg-img-right" />
-      </div>
+      <BackgroundTheme />
 
       <div className="pin-container">
         <div className="game-pin">
