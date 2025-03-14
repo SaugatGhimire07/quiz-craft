@@ -16,6 +16,7 @@ import AccountSettings from "../pages/AccountSettings";
 import UserDashboard from "../pages/UserDashboard";
 import CreateQuiz from "../pages/CreateQuiz";
 import WaitingRoom from "../pages/WaitingRoom";
+import LiveQuiz from "../pages/LiveQuiz"; // Import LiveQuiz component
 
 const AppRoutes = () => {
   return (
@@ -94,6 +95,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute requireAuth={true}>
               <CreateQuiz />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/live/:quizId"
+          element={
+            <ProtectedRoute requireAuth={true}>
+              <LiveQuiz />
             </ProtectedRoute>
           }
         />

@@ -1,6 +1,6 @@
 import "../styles/createQuiz.css";
-import LogoOnly from "../assets/logo/logo-only.png";
 import useQuiz from "../hooks/useQuiz";
+import QuizMainContent from "../components/QuizMainContent";
 
 const CreateQuiz = () => {
   const {
@@ -9,7 +9,6 @@ const CreateQuiz = () => {
     isEditingTitle,
     setIsEditingTitle,
     questions,
-    setQuestions,
     selectedQuestionIndex,
     setSelectedQuestionIndex,
     alert,
@@ -172,143 +171,17 @@ const CreateQuiz = () => {
             ))}
           </ul>
         </div>
-        <div className="quiz-main-content">
-          <div className="quiz-main-header">
-            <img src={LogoOnly} alt="Quiz Craft Logo" className="quiz-logo" />
-          </div>
-          <div className="question-group">
-            <input
-              type="text"
-              value={questions[selectedQuestionIndex].questionText}
-              onChange={(e) =>
-                handleQuestionChange(
-                  selectedQuestionIndex,
-                  "questionText",
-                  e.target.value
-                )
-              }
-              required
-              placeholder="Ask your question here..."
-            />
-
-            {questions[selectedQuestionIndex].image && (
-              <div className="question-image">
-                <img
-                  src={questions[selectedQuestionIndex].image}
-                  alt="Question"
-                />
-              </div>
-            )}
-          </div>
-
-          <div className="content-spacer"></div>
-
-          {questions[selectedQuestionIndex].type === "multiple-choice" ? (
-            <div className="options-container multiple-choice">
-              <div className="options-grid">
-                {questions[selectedQuestionIndex].options.map(
-                  (option, optionIndex) => (
-                    <div key={optionIndex} className="option-row">
-                      <div className="option-input-wrapper">
-                        <input
-                          type="text"
-                          value={option}
-                          onChange={(e) => {
-                            const newOptions = [
-                              ...questions[selectedQuestionIndex].options,
-                            ];
-                            newOptions[optionIndex] = e.target.value;
-                            handleQuestionChange(
-                              selectedQuestionIndex,
-                              "options",
-                              newOptions
-                            );
-                          }}
-                          placeholder={`Option ${optionIndex + 1}`}
-                          className="option-input"
-                        />
-                        {option && (
-                          <div
-                            className={`option-radio ${
-                              questions[selectedQuestionIndex].correctOption ===
-                              option
-                                ? "selected"
-                                : ""
-                            }`}
-                            onClick={() => {
-                              handleQuestionChange(
-                                selectedQuestionIndex,
-                                "correctOption",
-                                option
-                              );
-                            }}
-                          >
-                            <div className="radio-inner"></div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="options-container true-false">
-              <div className="option-row">
-                <div className="option-input-wrapper">
-                  <input
-                    type="text"
-                    value="True"
-                    readOnly
-                    className="option-input true-option"
-                  />
-                  <div
-                    className={`option-radio ${
-                      questions[selectedQuestionIndex].correctOption === "True"
-                        ? "selected"
-                        : ""
-                    }`}
-                    onClick={() => {
-                      handleQuestionChange(
-                        selectedQuestionIndex,
-                        "correctOption",
-                        "True"
-                      );
-                    }}
-                  >
-                    <div className="radio-inner"></div>
-                  </div>
-                </div>
-              </div>
-              <div className="option-row">
-                <div className="option-input-wrapper">
-                  <input
-                    type="text"
-                    value="False"
-                    readOnly
-                    className="option-input false-option"
-                  />
-                  <div
-                    className={`option-radio ${
-                      questions[selectedQuestionIndex].correctOption === "False"
-                        ? "selected"
-                        : ""
-                    }`}
-                    onClick={() => {
-                      handleQuestionChange(
-                        selectedQuestionIndex,
-                        "correctOption",
-                        "False"
-                      );
-                    }}
-                  >
-                    <div className="radio-inner"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        <QuizMainContent
+          questions={questions}
+          selectedQuestionIndex={selectedQuestionIndex}
+          handleQuestionChange={handleQuestionChange}
+          handleImageClick={handleImageClick}
+          handleImageChange={handleImageChange}
+          handleDragOver={handleDragOver}
+          handleDrop={handleDrop}
+          removeImage={removeImage}
+          fileInputRef={fileInputRef}
+        />
         <div className="quiz-sidebar right-sidebar">
           <div className="quiz-type">
             <label>Question Type</label>
