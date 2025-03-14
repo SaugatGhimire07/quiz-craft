@@ -61,11 +61,3 @@ export const generateAvatar = (seed) => {
   const encoded = window.btoa(unescape(encodeURIComponent(svgString)));
   return `data:image/svg+xml;base64,${encoded}`;
 };
-
-// Example usage:
-// const avatar = generateBotttsNeutralAvatar('playerName', {
-//   size: 256,
-//   backgroundColor: ['ff0000', '00ff00', '0000ff'],
-//   eyes: ['variant01', 'variant02'],
-//   mouth: ['variant01', 'variant02']
-// });

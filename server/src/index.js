@@ -59,6 +59,10 @@ io.on("connection", (socket) => {
           }
         }
 
+        // Generate a consistent avatar seed from the player's name
+        const avatarSeed =
+          playerName.toLowerCase().replace(/[^a-z0-9]/g, "") + Date.now();
+
         if (playerId) {
           // Store user data with role information
           connectedUsers.set(socket.id, {
@@ -73,6 +77,7 @@ io.on("connection", (socket) => {
             await Player.findByIdAndUpdate(playerId, {
               isConnected: true,
               socketId: socket.id,
+              avatarSeed: avatarSeed, // Save the seed in the database
             });
 
             // Only emit participant joined for non-hosts
@@ -80,7 +85,7 @@ io.on("connection", (socket) => {
               id: playerId,
               name: playerName,
               userId,
-              avatarSeed: playerName.toLowerCase().replace(/[^a-z0-9]/g, ""),
+              avatarSeed, // Send the same seed to all clients
               role: "participant",
             });
           }

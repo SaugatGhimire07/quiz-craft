@@ -1,18 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { io } from "socket.io-client";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
-
-// Create socket instance
-const socket = io("http://localhost:5001", {
-  withCredentials: true,
-  reconnection: true,
-  reconnectionDelay: 1000,
-  reconnectionAttempts: 5,
-});
+import { useSocket } from "../context/SocketContext";
 
 const JoinQuiz = () => {
+  const socket = useSocket();
   const [gamePin, setGamePin] = useState("");
   const [guestName, setGuestName] = useState("");
   const [error, setError] = useState("");
