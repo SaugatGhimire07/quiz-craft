@@ -16,6 +16,10 @@ import AccountSettings from "../pages/AccountSettings";
 import UserDashboard from "../pages/UserDashboard";
 import CreateQuiz from "../pages/CreateQuiz";
 import WaitingRoom from "../pages/WaitingRoom";
+import AdminOrganization from "../pages/adminOrganization";
+
+
+
 
 const AppRoutes = () => {
   return (
@@ -34,25 +38,25 @@ const AppRoutes = () => {
         <Route
           path="/verify-email"
           element={
-            <ProtectedRoute allowedStates={["email"]}>
+            // <ProtectedRoute allowedStates={["email"]}>
               <VerifyEmail />
-            </ProtectedRoute>
+            // </ProtectedRoute>
           }
         />
         <Route
           path="/verify-code"
           element={
-            <ProtectedRoute allowedStates={["email"]}>
+            // <ProtectedRoute allowedStates={["email"]}>
               <VerifyCode />
-            </ProtectedRoute>
+            //  </ProtectedRoute>
           }
         />
         <Route
           path="/new-password/:token"
           element={
-            <ProtectedRoute allowedStates={["resetToken"]}>
+            // <ProtectedRoute allowedStates={["resetToken"]}>
               <NewPassword />
-            </ProtectedRoute>
+            // </ProtectedRoute>
           }
         />
         <Route
@@ -97,6 +101,17 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/adminorganization"
+          element={
+            <ProtectedRoute requireAuth={true}>
+              <AdminOrganization />
+            </ProtectedRoute>
+          }
+        />
+
+       
       </Routes>
     </Router>
   );

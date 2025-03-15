@@ -64,54 +64,123 @@ export const registerUser = async (req, res) => {
 // @desc   Login user & get token
 // @route  POST /api/auth/login
 // @access Public
+// export const loginUser = async (req, res) => {
+//   const { email, password } = req.body;
+
+//   try {
+//     const user = await User.findOne({ email });
+
+//     if (!user) {
+//       return res.status(400).json({ message: "Invalid email or password" });
+//     }
+
+//     const isMatch = await user.matchPassword(password);
+//     if (!isMatch) {
+//       return res.status(400).json({ message: "Invalid email or password" });
+//     }
+
+//     // Check if email is verified
+//     if (!user.isVerified) {
+//       // Generate new verification code
+//       const verificationCode = Math.floor(
+//         100000 + Math.random() * 900000
+//       ).toString();
+//       user.verificationCode = verificationCode;
+//       user.verificationExpires = Date.now() + 3600000; // 1 hour
+//       await user.save();
+
+//       // Send new verification email
+//       await sendVerificationEmail(email, verificationCode);
+
+//       return res.status(403).json({
+//         message: "Please verify your email first",
+//         isVerified: false,
+//       });
+//     }
+
+//     const token = generateToken(user._id, user.sessionToken);
+    
+
+//     const userData = {
+//       _id: user._id,
+//       name: user.name,
+//       email: user.email,
+//       isVerified: user.isVerified,
+//       isAdmin: user.isAdmin || false,
+//       token,
+//     };
+
+//     // Log the user data
+//     console.log("User data:", userData);
+
+//     // Send the response
+//     res.json(userData);
+
+
+//   } catch (error) {
+//     console.error("Login error:", error);
+//     res.status(500).json({ message: "Server Error" });
+//   }
+// };
+
 export const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   try {
     const user = await User.findOne({ email });
 
+    // Add this line to log the raw user object
+    console.log('Raw user from database:', user.toObject());
+
     if (!user) {
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
     const isMatch = await user.matchPassword(password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid email or password" });
-    }
-
-    // Check if email is verified
-    if (!user.isVerified) {
-      // Generate new verification code
-      const verificationCode = Math.floor(
-        100000 + Math.random() * 900000
-      ).toString();
-      user.verificationCode = verificationCode;
-      user.verificationExpires = Date.now() + 3600000; // 1 hour
-      await user.save();
-
-      // Send new verification email
-      await sendVerificationEmail(email, verificationCode);
-
-      return res.status(403).json({
-        message: "Please verify your email first",
-        isVerified: false,
-      });
-    }
+        if (!isMatch) {
+          return res.status(400).json({ message: "Invalid email or password" });
+        }
+    
+        // Check if email is verified
+        if (!user.isVerified) {
+          // Generate new verification code
+          const verificationCode = Math.floor(
+            100000 + Math.random() * 900000
+          ).toString();
+          user.verificationCode = verificationCode;
+          user.verificationExpires = Date.now() + 3600000; // 1 hour
+          await user.save();
+    
+          // Send new verification email
+          await sendVerificationEmail(email, verificationCode);
+    
+          return res.status(403).json({
+            message: "Please verify your email first",
+            isVerified: false,
+          });
+        }
 
     const token = generateToken(user._id, user.sessionToken);
-
-    res.json({
+      
+    const userData = {
       _id: user._id,
       name: user.name,
       email: user.email,
       isVerified: user.isVerified,
+      isAdmin: user.isAdmin || false,
       token,
-    });
+    };
+
+    console.log('Response data:', userData);
+
+    res.json(userData);
+
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
+
 
 // @desc   Forgot password
 // @route  POST /api/auth/forgot-password

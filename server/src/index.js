@@ -35,8 +35,7 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 // Serve static files from 'public' directory
 app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
 
-const mongoURI =
-  process.env.MONGODB_URI || "mongodb://localhost:27017/quizcraft";
+const mongoURI = process.env.MONGODB_URI || "mongodb://localhost:27017/quizcraft";
 
 mongoose
   .connect(mongoURI)
