@@ -15,14 +15,54 @@ const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
+  // const login = (userData) => {
+    
+  //   const userWithVerification = {
+  //     ...userData,
+      
+  //     isVerified: userData.isVerified || false,
+  //     isAdmin: Boolean(userData.isAdmin) // Add this line
+  //   };
+  //   console.log(userData)
+  //   setUser(userWithVerification);
+  //   localStorage.setItem("user", JSON.stringify(userWithVerification));
+  // };
+
   const login = (userData) => {
-    const userWithVerification = {
-      ...userData,
-      isVerified: userData.isVerified || false,
+    // Make sure we preserve id and isAdmin explicitly
+    const userWithStatus = {
+      id: userData.id || userData._id, // Handle both id formats
+      name: userData.name,
+      email: userData.email,
+      isVerified: Boolean(userData.isVerified),
+      isAdmin: Boolean(userData.isAdmin)
     };
-    setUser(userWithVerification);
-    localStorage.setItem("user", JSON.stringify(userWithVerification));
+    
+    console.log('Login - Storing user data:', userWithStatus);
+    
+    setUser(userWithStatus);
+    localStorage.setItem("user", JSON.stringify(userWithStatus));
   };
+
+  // Update localStorage handling
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    console.log('Stored user:', storedUser);
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUser({
+          ...parsedUser,
+          isVerified: Boolean(parsedUser.isVerified),
+          isAdmin: Boolean(parsedUser.isAdmin)
+        });
+      } catch (error) {
+        console.error('Error parsing stored user:', error);
+        localStorage.removeItem("user");
+      }
+    }
+    setLoading(false);
+  }, []);
 
   const logout = () => {
     setUser(null);

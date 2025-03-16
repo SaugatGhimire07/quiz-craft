@@ -8,7 +8,7 @@ import api from "../api/axios";
 import "../styles/userdashboard.css";
 
 const UserDashboard = () => {
-  const { user } = useAuth();
+  const { user , isAdmin} = useAuth();
   const [initials, setInitials] = useState("");
   const [name, setName] = useState("");
   const [quizzes, setQuizzes] = useState([]);
@@ -34,9 +34,19 @@ const UserDashboard = () => {
 
   // Generate initials from user name when component mounts
   useEffect(() => {
+    console.group('UserDashboard Debug');
+    console.log('User object:', user);
+    console.log('isAdmin status:', Boolean(user?.isAdmin));
+    console.groupEnd();
+
+
+
     if (user) {
       const userName = user.name || "";
       setName(userName);
+      const isAdmin = user.isAdmin || false;
+
+      console.log("User admin status:", isAdmin);
 
       const userInitials = userName
         ? userName
@@ -50,7 +60,7 @@ const UserDashboard = () => {
 
       fetchQuizzes();
     }
-  }, [user]);
+  },  [user, isAdmin]);
 
   // Add effect to close dropdown when clicking outside
   useEffect(() => {
@@ -143,7 +153,7 @@ const UserDashboard = () => {
         {/* Main content with sidebar */}
         <div className="main-content">
           {/* Sidebar */}
-          <SidebarNav active="dashboard" showBackButton={false} />
+          <SidebarNav active="dashboard" showBackButton={false} isAdmin={user?.isAdmin} />
 
           {/* Dashboard content */}
           <div className="dashboard-content">

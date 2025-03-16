@@ -172,6 +172,8 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
 
+const mongoURI = process.env.MONGODB_URI || "mongodb://localhost:27017/quizcraft";
+
 // Routes
 app.use("/api/quiz", quizRoutes);
 app.use("/api/auth", authRoutes);
