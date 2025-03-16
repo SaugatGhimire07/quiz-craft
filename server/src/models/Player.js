@@ -20,10 +20,6 @@ const playerSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    avatarSeed: {
-      type: String,
-      required: true,
-    },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
