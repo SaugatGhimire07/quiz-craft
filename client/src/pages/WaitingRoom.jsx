@@ -1,184 +1,191 @@
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { customAlphabet } from "nanoid";
+import { generateAvatar } from "../utils/avatarGenerator";
+import { getOrCreateAvatar } from "../utils/avatarManager";
 import api from "../api/axios";
-import backgroundImage from "../assets/home/waiting-room-background.jpg";
-import Logo from "../assets/logo/logo.png";
+import Logo from "../assets/logo/logo-only.png";
+import HeaderLeft from "../assets/waiting-room/header_left.png";
+import HeaderRight from "../assets/waiting-room/header_right.png";
 import "../styles/waiting-room.css";
-
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 8);
+import { useAuth } from "../hooks/useAuth";
+import ParticipantsList from "../components/ParticipantsList";
+import { useQuizSession } from "../hooks/useQuizSession";
+import { useParticipants } from "../hooks/useParticipants";
 
 const WaitingRoom = () => {
+  const { user } = useAuth();
   const { quizId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const [gamePin, setGamePin] = useState("");
-  const [isLocked, setIsLocked] = useState(false);
-  const [players, setPlayers] = useState([]);
-  const [isHost, setIsHost] = useState(false);
 
-  useEffect(() => {
-    const fetchQuizDetails = async () => {
-      try {
-        const response = await api.get(`/quiz/${quizId}`);
-        const quiz = response.data;
-        setGamePin(quiz.gamePin || nanoid()); // Generate a new game PIN if not already set
-        setIsHost(true); // Assuming the user is the host if they navigate here
-      } catch (error) {
-        console.error("Error fetching quiz details:", error);
-      }
-    };
+  const { gamePin, sessionId, playerName, isHost, isParticipant } =
+    useQuizSession(quizId, location);
 
-    fetchQuizDetails();
-  }, [quizId]);
+  const { players, playerCount, socket, setPlayers, setPlayerCount } =
+    useParticipants(
+      gamePin,
+      quizId,
+      isHost,
+      playerName,
+      location,
+      user,
+      navigate
+    );
 
-  useEffect(() => {
-    const fetchPlayers = async () => {
-      try {
-        const response = await api.get(`/players/${gamePin}`);
-        setPlayers(response.data);
-      } catch (error) {
-        console.error("Error fetching players:", error);
-      }
-    };
+  const [currentUserId] = useState(user?._id || null);
 
-    if (gamePin) {
-      fetchPlayers();
-      const interval = setInterval(fetchPlayers, 3000);
-      return () => clearInterval(interval);
+  const handleStartQuiz = async () => {
+    try {
+      await api.post(`/quiz/${quizId}/session/start`);
+      // Emit socket event to start quiz
+      socket.emit("startQuiz", { pin: gamePin });
+    } catch (error) {
+      console.error("Error starting quiz:", error);
+      alert("Failed to start the quiz. Please try again.");
     }
-  }, [gamePin]);
-
-  useEffect(() => {
-    const checkQuizStatus = async () => {
-      try {
-        const response = await api.get(`/quiz/${quizId}`);
-        const quiz = response.data;
-
-        if (quiz.status === "draft") {
-          alert("The quiz has ended.");
-          navigate(location.state?.from || "/"); // Redirect to the previous page or home page
-        }
-      } catch (error) {
-        console.error("Error checking quiz status:", error);
-      }
-    };
-
-    const interval = setInterval(checkQuizStatus, 3000);
-    return () => clearInterval(interval);
-  }, [quizId, navigate, location.state]);
-
-  const handleStartQuiz = () => {
-    alert("Starting Quiz!");
-    // Additional logic to start the quiz would go here
   };
 
   const handleEndQuiz = async () => {
     try {
       await api.post(`/quiz/${quizId}/end`);
+      // Clear avatar data for this quiz
+      Object.keys(sessionStorage).forEach((key) => {
+        if (key.includes(`avatar_${quizId}`)) {
+          sessionStorage.removeItem(key);
+        }
+      });
       alert("Quiz ended and status updated to draft.");
-      navigate(location.state?.from || "/"); // Redirect to the previous page or home page
+      navigate(location.state?.from || "/");
     } catch (error) {
       console.error("Error ending quiz:", error);
       alert("Failed to end the quiz. Please try again.");
     }
   };
 
-  const handleToggleLock = () => {
-    setIsLocked(!isLocked);
+  const handleLeaveQuiz = async () => {
+    try {
+      if (!isHost && location.state?.playerId) {
+        // Clean up avatar data for this participant
+        const participantKey = `avatar_${location.state.playerId}_${quizId}`;
+        sessionStorage.removeItem(participantKey);
+
+        // Emit socket event to notify others
+        socket.emit("leaveQuizRoom", {
+          pin: gamePin,
+          playerId: location.state.playerId,
+        });
+
+        // Update player status in database
+        await api.post(`/players/${location.state.playerId}/leave`);
+
+        // Disconnect socket
+        socket.disconnect();
+
+        // Navigate back to home
+        navigate("/");
+      }
+    } catch (error) {
+      console.error("Error leaving quiz:", error);
+      // Still try to navigate away even if there's an error
+      navigate("/");
+    }
+  };
+
+  const renderParticipants = () => {
+    if (!Array.isArray(players) || players.length === 0) {
+      return (
+        <p className="no-participants">
+          Share the game PIN with others to join!
+        </p>
+      );
+    }
+
+    return (
+      <div className="participant-grid">
+        {players.map((player) => {
+          const isCurrentPlayer =
+            !isHost &&
+            (location.state?.playerId === player._id ||
+              (user && user._id === player.userId));
+
+          const avatarSeed = getOrCreateAvatar(player._id, quizId);
+
+          return (
+            <div
+              key={player._id}
+              className={`participant-card ${
+                isCurrentPlayer ? "current-player" : ""
+              }`}
+            >
+              <img
+                src={generateAvatar(avatarSeed)}
+                alt={`${isCurrentPlayer ? "Your" : `${player.name}'s`} avatar`}
+                className="participant-avatar"
+                width="64"
+                height="64"
+                loading="lazy"
+              />
+              <span className="participant-name">{player.name}</span>
+              {isCurrentPlayer && <span className="you-badge">You</span>}
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   return (
     <div className="waiting-room">
-      {/* Top bar with game PIN */}
-      <div className="pin-container">
-        <div className="join-info">
-          <div className="quiz-craft-logo"></div>
-        </div>
-
-        {!isLocked ? (
-          <div className="game-pin">
-            <h2>Game PIN:</h2>
-            <h1 className="decorative-pin">{gamePin}</h1>
-          </div>
-        ) : (
-          <div className="locked-message">
-            <h2>This game is locked - No one else can join</h2>
-          </div>
-        )}
+      <div className="background-theme">
+        <img src={HeaderLeft} alt="" className="bg-img-left" />
+        <img src={HeaderRight} alt="" className="bg-img-right" />
       </div>
 
-      {/* Classroom content */}
-      <div className="classroom">
-        <div className="left-wall">
-          <div className="door"></div>
-          <div className="bulletin-board"></div>
-        </div>
-
-        <div className="projection-area">
-          <div className="projection-screen">
-            <div className="logo">Quiz Craft!</div>
-            <div className="waiting-message">
-              <span className="waiting-text">Waiting for players</span>
-              <span className="dots">...</span>
-            </div>
-
-            {players.length > 0 && (
-              <div className="player-list">
-                {players.map((player) => (
-                  <div key={player._id} className="player-name">
-                    {player.name}
-                  </div>
-                ))}
-              </div>
-            )}
+      <div className="pin-container">
+        <div className="game-pin">
+          <div className="join-instructions">
+            Join at quizcraft.com | Use code{" "}
+            <span className="pin-highlight">{gamePin}</span>
           </div>
         </div>
+      </div>
 
-        <div className="right-wall">
-          <div className="whiteboard"></div>
-          <div className="apple"></div>
+      <div className="projection-area">
+        <div className="projection-screen">
+          <img src={Logo} alt="Quiz Craft Logo" className="quiz-craft-logo" />
+          <h1 className="waiting-logo">
+            <em>Quiz Craft!</em>
+          </h1>
         </div>
 
-        <div className="desks">
-          {[...Array(6)].map((_, index) => (
-            <div key={index} className="desk">
-              <div className="chair"></div>
-              {index === 0 && <div className="laptop"></div>}
-            </div>
-          ))}
-        </div>
+        <ParticipantsList
+          players={players}
+          isHost={isHost}
+          currentUserId={currentUserId}
+          currentPlayerId={location.state?.playerId}
+          user={user}
+        />
+      </div>
 
-        {/* Game controls (Start, End, and Lock buttons) */}
-        {isHost && (
-          <div className="game-controls">
-            <button className="start-button" onClick={handleStartQuiz}>
-              Start
+      <div className="game-controls">
+        {isHost ? (
+          <>
+            <button
+              className="start-button"
+              onClick={handleStartQuiz}
+              disabled={players.length === 0}
+            >
+              Start Quiz
             </button>
             <button className="end-button" onClick={handleEndQuiz}>
-              End
+              Back to Dashboard
             </button>
-            <button
-              className={`lock-button ${isLocked ? "locked" : "unlocked"}`}
-              onClick={handleToggleLock}
-              aria-label={isLocked ? "Unlock quiz" : "Lock quiz"}
-            >
-              <div className="lock-icon"></div>
-            </button>
-          </div>
+          </>
+        ) : (
+          <button className="leave-button" onClick={handleLeaveQuiz}>
+            Leave Quiz
+          </button>
         )}
-      </div>
-
-      <div className="control-bar">
-        <div className="player-count">
-          <i className="player-icon"></i>
-          <span>{players.length}</span>
-        </div>
-        <div className="controls">
-          <button className="mute-button"></button>
-          <button className="settings-button"></button>
-          <button className="fullscreen-button"></button>
-        </div>
       </div>
     </div>
   );
