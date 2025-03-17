@@ -6,7 +6,7 @@ import "../styles/fonts.css";
 
 //components
 import DashboardNavbar from "../components/DashNav";
-import SideBar from "../components/SidebarNav";
+
 
 import { useNavigate } from "react-router-dom";
 
@@ -61,11 +61,11 @@ const AccountSettings = () => {
       // Generate initials from name
       const userInitials = userName
         ? userName
-            .split(" ")
-            .map((name) => name[0])
-            .join("")
-            .toUpperCase()
-            .substring(0, 2)
+          .split(" ")
+          .map((name) => name[0])
+          .join("")
+          .toUpperCase()
+          .substring(0, 2)
         : "";
       setInitials(userInitials);
     }
@@ -108,11 +108,11 @@ const AccountSettings = () => {
       // Generate new initials
       const userInitials = name
         ? name
-            .split(" ")
-            .map((n) => n[0])
-            .join("")
-            .toUpperCase()
-            .substring(0, 2)
+          .split(" ")
+          .map((n) => n[0])
+          .join("")
+          .toUpperCase()
+          .substring(0, 2)
         : "";
       setInitials(userInitials);
 
@@ -338,8 +338,26 @@ const AccountSettings = () => {
       <div className="content-container">
         {/* Main content with sidebar */}
         <div className="main-content">
-          {/* Sidebar */}
-          <SideBar active="account" />
+          <div className="sidebar">
+            <div className="back-button">
+              <button onClick={() => navigate("/dashboard")}>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                <span>Back to home</span>
+              </button>
+            </div>
+          </div>
 
           {/* Main content */}
           <div className="settings-content">
@@ -353,9 +371,8 @@ const AccountSettings = () => {
               >
                 <h2 className="section-title">Name & image</h2>
                 <button
-                  className={`section-toggle ${
-                    expandedSections.nameImage ? "expanded" : ""
-                  }`}
+                  className={`section-toggle ${expandedSections.nameImage ? "expanded" : ""
+                    }`}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -377,9 +394,8 @@ const AccountSettings = () => {
                 <div className="avatar-circle-small">{initials}</div>
               </div>
               <div
-                className={`section-content ${
-                  expandedSections.nameImage ? "expanded" : ""
-                }`}
+                className={`section-content ${expandedSections.nameImage ? "expanded" : ""
+                  }`}
               >
                 {/* Name input with validation */}
                 <div className="name-input-container">
@@ -396,9 +412,8 @@ const AccountSettings = () => {
                       }
                     />
                     <button
-                      className={`save-button ${
-                        showSuccessButton ? "success" : ""
-                      }`}
+                      className={`save-button ${showSuccessButton ? "success" : ""
+                        }`}
                       onClick={handleNameUpdate}
                       disabled={isSubmitting || showSuccessButton}
                     >
@@ -472,9 +487,8 @@ const AccountSettings = () => {
                   <span className="verified-badge">Verified</span>
                 </div>
                 <button
-                  className={`section-toggle ${
-                    expandedSections.email ? "expanded" : ""
-                  }`}
+                  className={`section-toggle ${expandedSections.email ? "expanded" : ""
+                    }`}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -495,9 +509,8 @@ const AccountSettings = () => {
                 <span>Your email is {email}</span>
               </div>
               <div
-                className={`section-content ${
-                  expandedSections.email ? "expanded" : ""
-                }`}
+                className={`section-content ${expandedSections.email ? "expanded" : ""
+                  }`}
               >
                 <p className="section-instruction">
                   Change your email address below.
@@ -512,11 +525,10 @@ const AccountSettings = () => {
                       value={newEmail}
                       onChange={(e) => setNewEmail(e.target.value)}
                       placeholder="Enter your new email address"
-                      className={`email-input ${
-                        emailUpdateStatus.type === "error" && !newEmail
-                          ? "error"
-                          : ""
-                      }`}
+                      className={`email-input ${emailUpdateStatus.type === "error" && !newEmail
+                        ? "error"
+                        : ""
+                        }`}
                     />
                   </div>
 
@@ -527,12 +539,11 @@ const AccountSettings = () => {
                       id="confirm-email"
                       value={confirmEmail}
                       onChange={(e) => setConfirmEmail(e.target.value)}
-                      className={`email-input ${
-                        emailUpdateStatus.type === "error" &&
+                      className={`email-input ${emailUpdateStatus.type === "error" &&
                         confirmEmail !== newEmail
-                          ? "error"
-                          : ""
-                      }`}
+                        ? "error"
+                        : ""
+                        }`}
                     />
                   </div>
 
@@ -543,11 +554,10 @@ const AccountSettings = () => {
                       id="password"
                       value={emailPassword}
                       onChange={(e) => setEmailPassword(e.target.value)}
-                      className={`email-input ${
-                        emailUpdateStatus.type === "error" && !emailPassword
-                          ? "error"
-                          : ""
-                      }`}
+                      className={`email-input ${emailUpdateStatus.type === "error" && !emailPassword
+                        ? "error"
+                        : ""
+                        }`}
                     />
                     <div className="forgot-password">
                       Forgot your password?{" "}
@@ -562,9 +572,8 @@ const AccountSettings = () => {
                   )}
 
                   <button
-                    className={`change-email-button ${
-                      showEmailSuccessButton ? "success" : ""
-                    }`}
+                    className={`change-email-button ${showEmailSuccessButton ? "success" : ""
+                      }`}
                     onClick={handleEmailUpdate}
                     disabled={isEmailSubmitting || showEmailSuccessButton}
                   >
@@ -603,9 +612,8 @@ const AccountSettings = () => {
               >
                 <h2 className="section-title">Password</h2>
                 <button
-                  className={`section-toggle ${
-                    expandedSections.password ? "expanded" : ""
-                  }`}
+                  className={`section-toggle ${expandedSections.password ? "expanded" : ""
+                    }`}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -624,9 +632,8 @@ const AccountSettings = () => {
               </div>
               <p className="section-instruction">Change your password below</p>
               <div
-                className={`section-content ${
-                  expandedSections.password ? "expanded" : ""
-                }`}
+                className={`section-content ${expandedSections.password ? "expanded" : ""
+                  }`}
               >
                 <div className="password-form">
                   <div className="email-field-group">
@@ -636,12 +643,11 @@ const AccountSettings = () => {
                       id="current-password"
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
-                      className={`email-input ${
-                        passwordUpdateStatus.type === "error" &&
+                      className={`email-input ${passwordUpdateStatus.type === "error" &&
                         !currentPassword
-                          ? "error"
-                          : ""
-                      }`}
+                        ? "error"
+                        : ""
+                        }`}
                     />
                     <div className="forgot-password">
                       Forgot your password?{" "}
@@ -656,12 +662,11 @@ const AccountSettings = () => {
                       id="new-password"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      className={`email-input ${
-                        passwordUpdateStatus.type === "error" &&
+                      className={`email-input ${passwordUpdateStatus.type === "error" &&
                         (newPassword.length === 0 || newPassword.length < 8)
-                          ? "error"
-                          : ""
-                      }`}
+                        ? "error"
+                        : ""
+                        }`}
                     />
                     <p className="password-hint">
                       Password must be at least 8 characters long
@@ -675,12 +680,11 @@ const AccountSettings = () => {
                       id="confirm-password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className={`email-input ${
-                        passwordUpdateStatus.type === "error" &&
+                      className={`email-input ${passwordUpdateStatus.type === "error" &&
                         confirmPassword !== newPassword
-                          ? "error"
-                          : ""
-                      }`}
+                        ? "error"
+                        : ""
+                        }`}
                     />
                   </div>
 
@@ -693,9 +697,8 @@ const AccountSettings = () => {
                   )}
 
                   <button
-                    className={`change-email-button ${
-                      showPasswordSuccessButton ? "success" : ""
-                    }`}
+                    className={`change-email-button ${showPasswordSuccessButton ? "success" : ""
+                      }`}
                     onClick={handlePasswordUpdate}
                     disabled={isPasswordSubmitting || showPasswordSuccessButton}
                   >
