@@ -14,6 +14,7 @@ import contactRoutes from "./routes/contactRoutes.js";
 import quizRoutes from "./routes/quizRoutes.js";
 import playersRoutes from "./routes/playersRoutes.js";
 import imageRoutes from "./routes/imageRoutes.js";
+import organizationRoutes from "./routes/organizationRoutes.js";
 
 // Get __dirname equivalent in ES module
 const __filename = fileURLToPath(import.meta.url);
@@ -181,6 +182,7 @@ app.use("/api/players", playersRoutes);
 app.use("/api", contactRoutes);
 app.use("/api/images", imageRoutes);
 app.get("/", (req, res) => res.send("API is running..."));
+app.use("/api", organizationRoutes);
 
 // Modified server startup
 const PORT = process.env.PORT || 5001;

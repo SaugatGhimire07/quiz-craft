@@ -526,8 +526,8 @@ const AccountSettings = () => {
                       onChange={(e) => setNewEmail(e.target.value)}
                       placeholder="Enter your new email address"
                       className={`email-input ${emailUpdateStatus.type === "error" && !newEmail
-                          ? "error"
-                          : ""
+                        ? "error"
+                        : ""
                         }`}
                     />
                   </div>
@@ -540,9 +540,9 @@ const AccountSettings = () => {
                       value={confirmEmail}
                       onChange={(e) => setConfirmEmail(e.target.value)}
                       className={`email-input ${emailUpdateStatus.type === "error" &&
-                          confirmEmail !== newEmail
-                          ? "error"
-                          : ""
+                        confirmEmail !== newEmail
+                        ? "error"
+                        : ""
                         }`}
                     />
                   </div>
@@ -555,8 +555,8 @@ const AccountSettings = () => {
                       value={emailPassword}
                       onChange={(e) => setEmailPassword(e.target.value)}
                       className={`email-input ${emailUpdateStatus.type === "error" && !emailPassword
-                          ? "error"
-                          : ""
+                        ? "error"
+                        : ""
                         }`}
                     />
                     <div className="forgot-password">
@@ -644,9 +644,9 @@ const AccountSettings = () => {
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
                       className={`email-input ${passwordUpdateStatus.type === "error" &&
-                          !currentPassword
-                          ? "error"
-                          : ""
+                        !currentPassword
+                        ? "error"
+                        : ""
                         }`}
                     />
                     <div className="forgot-password">
@@ -663,9 +663,9 @@ const AccountSettings = () => {
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       className={`email-input ${passwordUpdateStatus.type === "error" &&
-                          (newPassword.length === 0 || newPassword.length < 8)
-                          ? "error"
-                          : ""
+                        (newPassword.length === 0 || newPassword.length < 8)
+                        ? "error"
+                        : ""
                         }`}
                     />
                     <p className="password-hint">
@@ -681,9 +681,9 @@ const AccountSettings = () => {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       className={`email-input ${passwordUpdateStatus.type === "error" &&
-                          confirmPassword !== newPassword
-                          ? "error"
-                          : ""
+                        confirmPassword !== newPassword
+                        ? "error"
+                        : ""
                         }`}
                     />
                   </div>

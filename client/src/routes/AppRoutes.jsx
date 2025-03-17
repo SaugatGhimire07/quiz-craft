@@ -16,7 +16,7 @@ import AccountSettings from "../pages/AccountSettings";
 import UserDashboard from "../pages/UserDashboard";
 import CreateQuiz from "../pages/CreateQuiz";
 import WaitingRoom from "../pages/WaitingRoom";
-import AdminOrganization from "../pages/adminOrganization";
+import AdminOrganization from "../pages/AdminOrganization";
 
 
 
