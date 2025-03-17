@@ -6,6 +6,7 @@ import ConfirmationOverlay from "../components/ConfirmationOverlay";
 import { useAuth } from "../hooks/useAuth";
 import api from "../api/axios";
 import "../styles/userdashboard.css";
+import "../styles/adminorganization.css"; // New CSS file for additional styles
 
 const AdminOrganization = () => {
   const { user, isAdmin } = useAuth();
@@ -143,6 +144,10 @@ const AdminOrganization = () => {
       }
     };
 
+    const handleCancel = () => {
+      setShowCreateOrg(false);
+    };
+
     return (
       <div className="create-org-container">
         <h2>Create Organization</h2>
@@ -156,6 +161,7 @@ const AdminOrganization = () => {
           />
         </div>
         <button onClick={handleCreateOrg}>Create</button>
+        <button className="cancel" onClick={handleCancel}>Cancel</button>
       </div>
     );
   };
@@ -199,6 +205,7 @@ const AdminOrganization = () => {
           />
         </div>
         <button onClick={handleModifyOrg}>Save</button>
+        <button className="cancel" onClick={() => setShowModifyOrg(false)}>Cancel</button>
       </div>
     );
   };
@@ -215,6 +222,10 @@ const AdminOrganization = () => {
       } catch (error) {
         console.error("Error creating person:", error);
       }
+    };
+
+    const handleCancel = () => {
+      setShowCreatePerson(false);
     };
 
     return (
@@ -239,6 +250,7 @@ const AdminOrganization = () => {
           />
         </div>
         <button onClick={handleCreatePerson}>Create</button>
+        <button className="cancel" onClick={handleCancel}>Cancel</button>
       </div>
     );
   };
@@ -279,6 +291,7 @@ const AdminOrganization = () => {
           />
         </div>
         <button onClick={handleModifyPerson}>Save</button>
+        <button className="cancel" onClick={() => setShowModifyPerson(false)}>Cancel</button>
       </div>
     );
   };
@@ -296,69 +309,71 @@ const AdminOrganization = () => {
 
             <div className="top-section">
               <button className="dropdown-button" onClick={handleCreateNewOrg}>
-                Create New Organization
-                <span className="dropdown-icon">
-                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-                  </svg>
-                </span>
+                Create Organization
               </button>
             </div>
-
             <h2 className="sub-heading-title">All Organizations</h2>
-
             <table className="organization-table">
               <thead>
-                <tr>
-                  <th>Organization Name</th>
-                  <th>Actions</th>
+                <tr className="organization-table-row">
+                  <th className="organization-table-header">Organization Name</th>
+                  <th className="organization-table-header">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr>
-                    <td colSpan="2">Loading organizations...</td>
+                  <tr className="organization-table-row">
+                    <td className="organization-table-data" colSpan="2">Loading organizations...</td>
                   </tr>
                 ) : organizations.length > 0 ? (
                   organizations.map((org) => (
                     <React.Fragment key={org._id}>
-                      <tr>
-                        <td onClick={() => toggleDropdown(org._id)}>
+                      <tr className="organization-table-row">
+                        <td className="organization-table-data" onClick={() => toggleDropdown(org._id)}>
                           {org.name}
                           <button className="dropdown-arrow">
                             {activeDropdown === org._id ? "▲" : "▼"}
                           </button>
                         </td>
-                        <td>
-                          <button onClick={() => handleModifyOrg(org._id)}>Modify</button>
+                        <td className="organization-table-data">
+                          <button className="action-button" onClick={() => handleModifyOrg(org._id)}>
+                            <i className="fas fa-edit"></i> Modify
+                          </button>
+                          <button className="action-button" onClick={() => handleCreatePerson()}>
+                            <i className="fas fa-user-plus"></i> Add Person
+                          </button>
                         </td>
                       </tr>
                       {activeDropdown === org._id && (
-                        <tr>
-                          <td colSpan="2">
+                        <tr className="organization-table-row">
+                          <td className="organization-table-data" colSpan="2">
                             <table className="people-table">
                               <thead>
-                                <tr>
-                                  <th>Name</th>
-                                  <th>Email</th>
-                                  <th>Actions</th>
+                                <tr className="people-table-row">
+                                  <th className="people-table-header">Name</th>
+                                  <th className="people-table-header">Email</th>
+                                  <th className="people-table-header">Actions</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {people.length > 0 ? (
                                   people.map((person) => (
-                                    <tr key={person._id}>
-                                      <td>{person.name}</td>
-                                      <td>{person.email}</td>
-                                      <td>
-                                        <button onClick={() => handleModifyPerson(person)}>Modify</button>
-                                        <button onClick={(e) => confirmDeletePerson(e, person)}>Delete</button>
+                                    <tr className="people-table-row" key={person._id}>
+                                      <td className="people-table-data">{person.name}</td>
+                                      <td className="people-table-data">{person.email}</td>
+                                      <td className="people-table-data">
+                                        <button className="action-button" onClick={() => handleModifyPerson(person)}>
+                                          <i className="fas fa-edit"></i> Modify
+                                        </button>
+                                        <button className="action-button" onClick={(e) => confirmDeletePerson(e, person)}>
+                                          <i className="fas fa-trash"></i> Delete
+                                        </button>
                                       </td>
                                     </tr>
                                   ))
                                 ) : (
-                                  <tr>
-                                    <td colSpan="3">No people found in this organization.</td>
+                                  <tr className="people-table-row">
+                                    <td className="people-table-data" colSpan="3">No people found in this organization.</td>
                                   </tr>
                                 )}
                               </tbody>
@@ -369,8 +384,8 @@ const AdminOrganization = () => {
                     </React.Fragment>
                   ))
                 ) : (
-                  <tr>
-                    <td colSpan="2">No organizations found.</td>
+                  <tr className="organization-table-row">
+                    <td className="organization-table-data" colSpan="2">No organizations found.</td>
                   </tr>
                 )}
               </tbody>

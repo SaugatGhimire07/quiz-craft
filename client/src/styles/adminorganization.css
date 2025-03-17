@@ -1,0 +1,255 @@
+.organization-table,
+.people-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.organization-table-header,
+.people-table-header {
+  background-color: #f2f2f2;
+  font-weight: bold;
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.organization-table-data,
+.people-table-data {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.organization-table-row:hover,
+.people-table-row:hover {
+  background-color: #f1f1f1;
+}
+
+.dropdown-arrow {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  margin-left: 10px;
+}
+
+.action-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #007bff;
+  font-size: 14px;
+  margin-right: 10px;
+}
+
+.action-button i {
+  margin-right: 5px;
+}
+
+/* Create Organization Styles */
+.create-org-container {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+}
+
+.create-org-container h2 {
+  margin-bottom: 20px;
+  font-size: 24px;
+  color: #333;
+}
+
+.create-org-container .form-group {
+  margin-bottom: 15px;
+}
+
+.create-org-container .form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.create-org-container .form-group input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.create-org-container button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  background-color: #28a745;
+  color: #fff;
+}
+
+.create-org-container button:hover {
+  opacity: 0.9;
+}
+
+.create-org-container button.cancel {
+  background-color: #dc3545;
+  color: #fff;
+  margin-left: 10px;
+}
+
+/* Modify Organization Styles */
+.modify-org-container {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+}
+
+.modify-org-container h2 {
+  margin-bottom: 20px;
+  font-size: 24px;
+  color: #333;
+}
+
+.modify-org-container .form-group {
+  margin-bottom: 15px;
+}
+
+.modify-org-container .form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.modify-org-container .form-group input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.modify-org-container button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  background-color: #ffc107;
+  color: #fff;
+}
+
+.modify-org-container button:hover {
+  opacity: 0.9;
+}
+
+.modify-org-container button.cancel {
+  background-color: #dc3545;
+  color: #fff;
+  margin-left: 10px;
+}
+
+/* Create Person Styles */
+.create-person-container {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+}
+
+.create-person-container h2 {
+  margin-bottom: 20px;
+  font-size: 24px;
+  color: #333;
+}
+
+.create-person-container .form-group {
+  margin-bottom: 15px;
+}
+
+.create-person-container .form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.create-person-container .form-group input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.create-person-container button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  background-color: #007bff;
+  color: #fff;
+}
+
+.create-person-container button:hover {
+  opacity: 0.9;
+}
+
+.create-person-container button.cancel {
+  background-color: #dc3545;
+  color: #fff;
+  margin-left: 10px;
+}
+
+/* Modify Person Styles */
+.modify-person-container {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+}
+
+.modify-person-container h2 {
+  margin-bottom: 20px;
+  font-size: 24px;
+  color: #333;
+}
+
+.modify-person-container .form-group {
+  margin-bottom: 15px;
+}
+
+.modify-person-container .form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.modify-person-container .form-group input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.modify-person-container button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  background-color: #17a2b8;
+  color: #fff;
+}
+
+.modify-person-container button:hover {
+  opacity: 0.9;
+}
+
+.modify-person-container button.cancel {
+  background-color: #dc3545;
+  color: #fff;
+  margin-left: 10px;
+}
