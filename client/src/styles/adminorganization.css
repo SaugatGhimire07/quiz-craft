@@ -34,16 +34,71 @@
 }
 
 .action-button {
-  background: none;
+  background-color: #007bff; /* Blue color for the button */
   border: none;
-  cursor: pointer;
-  color: #007bff;
+  border-radius: 20px; /* Rounded corners */
+  color: white; /* White text */
+  padding: 8px 16px; /* Padding for better spacing */
   font-size: 14px;
+  cursor: pointer;
   margin-right: 10px;
+  transition: background-color 0.3s ease; /* Smooth transition for hover effect */
 }
 
 .action-button i {
   margin-right: 5px;
+}
+
+.action-button:hover {
+  background-color: #0056b3; /* Darker blue on hover */
+}
+
+/* Specific styles for delete button */
+.action-button.delete {
+  background-color: #dc3545; /* Red color for delete button */
+}
+
+.action-button.delete:hover {
+  background-color: #c82333; /* Darker red on hover */
+}
+
+/* Specific styles for modify button */
+.action-button.modify {
+  background-color: #ffc107; /* Yellow color for modify button */
+  color: #000; /* Black text for better contrast */
+}
+
+.action-button.modify:hover {
+  background-color: #e0a800; /* Darker yellow on hover */
+}
+
+/* Specific styles for add person button */
+.action-button.add-person {
+  background-color: #28a745; /* Green color for add person button */
+}
+
+.action-button.add-person:hover {
+  background-color: #218838; /* Darker green on hover */
+}
+
+/* Specific styles for import button */
+.action-button.import {
+  background-color: #17a2b8; /* Teal color for import button */
+}
+
+.action-button.import:hover {
+  background-color: #138496; /* Darker teal on hover */
+}
+
+/* Error Message Styles */
+.error-message {
+  color: #dc3545; /* Red color for error text */
+  background-color: #f8d7da; /* Light red background */
+  padding: 10px;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  font-size: 14px;
 }
 
 /* Create Organization Styles */
@@ -249,6 +304,58 @@
 }
 
 .modify-person-container button.cancel {
+  background-color: #dc3545;
+  color: #fff;
+  margin-left: 10px;
+}
+
+/* Import People Styles */
+.import-people-container {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+}
+
+.import-people-container h2 {
+  margin-bottom: 20px;
+  font-size: 24px;
+  color: #333;
+}
+
+.import-people-container .form-group {
+  margin-bottom: 15px;
+}
+
+.import-people-container .form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.import-people-container .form-group input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.import-people-container button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  background-color: #17a2b8;
+  color: #fff;
+}
+
+.import-people-container button:hover {
+  opacity: 0.9;
+}
+
+.import-people-container button.cancel {
   background-color: #dc3545;
   color: #fff;
   margin-left: 10px;
