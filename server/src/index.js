@@ -7,7 +7,8 @@ import { fileURLToPath } from "url";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import Player from "./models/Player.js";
-import Quiz from "./models/Quiz.js"; // Add this import
+import Quiz from "./models/Quiz.js";
+import QuizSession from "./models/QuizSession.js";
 import connectDB from "./config/database.js";
 import authRoutes from "./routes/authRoutes.js";
 import contactRoutes from "./routes/contactRoutes.js";
@@ -35,75 +36,188 @@ const io = new Server(httpServer, {
 
 // Track connected users and their rooms
 const connectedUsers = new Map();
+const quizSessions = new Map();
 
 // Socket.io connection handling
 io.on("connection", (socket) => {
   console.log(`New client connected: ${socket.id}`);
 
+  // Socket.io event handler for starting a quiz
+  socket.on("startQuiz", async ({ pin, quizId, sessionId }) => {
+    console.log(
+      `Quiz started by host for room ${pin}, quiz ID: ${quizId}, session ID: ${sessionId}`
+    );
+
+    try {
+      // First try finding by sessionId (more reliable)
+      let session;
+      if (sessionId) {
+        session = await QuizSession.findByIdAndUpdate(
+          sessionId,
+          {
+            startedAt: new Date(),
+            status: "active",
+            isActive: true, // Make sure both fields are updated
+          },
+          { new: true }
+        );
+
+        if (session) {
+          console.log(`Found and updated session by ID: ${sessionId}`);
+        }
+      }
+
+      // If session wasn't found by ID, try finding by pin
+      if (!session) {
+        session = await QuizSession.findOneAndUpdate(
+          { pin, isActive: true },
+          {
+            startedAt: new Date(),
+            status: "active",
+            isActive: true, // Make sure both fields are updated
+          },
+          { new: true }
+        );
+
+        if (session) {
+          console.log(`Found and updated session by PIN: ${pin}`);
+        }
+      }
+
+      // If still no session, create a new one
+      if (!session) {
+        console.log(
+          `No session found for pin ${pin}, trying to create a new one`
+        );
+
+        // Get the quiz to ensure it exists
+        const quiz = await Quiz.findById(quizId);
+        if (!quiz) {
+          console.error(`Quiz not found with ID ${quizId}`);
+          return;
+        }
+
+        session = new QuizSession({
+          quizId,
+          pin,
+          hostId: quiz.createdBy,
+          isActive: true,
+          status: "active",
+          startedAt: new Date(),
+        });
+
+        await session.save();
+        console.log(
+          `Created new session with ID ${session._id} and PIN ${pin}`
+        );
+      }
+
+      // Log the room size for debugging
+      const room = io.sockets.adapter.rooms.get(pin);
+      const roomSize = room ? room.size : 0;
+      console.log(`Room ${pin} has ${roomSize} connected clients`);
+
+      if (room) {
+        console.log("Room participants:", Array.from(room));
+      }
+
+      // Broadcast to EVERYONE in the room, including sender
+      console.log(`Broadcasting quizStarted event to room ${pin}`);
+      io.to(pin).emit("quizStarted", {
+        pin,
+        quizId,
+        timestamp: new Date(),
+        sessionId: session._id,
+      });
+
+      // Add a direct message to each socket in the room for guaranteed delivery
+      if (room) {
+        for (const clientId of room) {
+          console.log(`Sending direct quizStarted to client ${clientId}`);
+          io.to(clientId).emit("quizStarted", {
+            pin,
+            quizId,
+            timestamp: new Date(),
+            sessionId: session._id,
+            directMessage: true,
+          });
+        }
+      }
+
+      // Also send a direct message to each participant in that room
+      const clientsInRoom = io.sockets.adapter.rooms.get(pin);
+      if (clientsInRoom) {
+        clientsInRoom.forEach((clientId) => {
+          if (clientId !== socket.id) {
+            // Don't send to host
+            io.to(clientId).emit("quizStarted", {
+              pin,
+              quizId,
+              timestamp: new Date(),
+              sessionId: session._id,
+            });
+          }
+        });
+      }
+
+      console.log(`Broadcasted quizStarted event to room ${pin}`);
+    } catch (error) {
+      console.error("Error handling startQuiz event:", error);
+    }
+  });
+
   socket.on(
     "joinQuizRoom",
     async ({ pin, playerName, playerId, isHost, userId }) => {
-      try {
-        socket.join(pin);
+      if (!pin) return;
 
-        // Validate if the user should be allowed to join
-        if (isHost) {
-          const quiz = await Quiz.findOne({
-            "sessions.pin": pin,
-            createdBy: userId,
-          });
+      console.log(
+        `${isHost ? "Host" : "Player"} ${playerName} joining room ${pin}`
+      );
 
-          if (!quiz) {
-            socket.emit("error", { message: "Unauthorized to join as host" });
-            return;
-          }
-        }
+      // Join the socket room
+      socket.join(pin);
 
-        // Generate a consistent avatar seed from the player's name
-        const avatarSeed =
-          playerName.toLowerCase().replace(/[^a-z0-9]/g, "") + Date.now();
+      // Generate a deterministic avatar seed based on player details
+      const avatarSeed = `${playerName
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "")}${Date.now()}`;
 
-        if (playerId) {
-          // Store user data with role information
-          connectedUsers.set(socket.id, {
-            pin,
+      // Update player connection status in database for participants
+      if (!isHost && playerId) {
+        try {
+          const player = await Player.findByIdAndUpdate(
             playerId,
-            isHost,
-            role: isHost ? "host" : "participant",
-          });
-
-          // Only update player status if they're not a host
-          if (!isHost) {
-            await Player.findByIdAndUpdate(playerId, {
+            {
               isConnected: true,
               socketId: socket.id,
-              avatarSeed: avatarSeed, // Save the seed in the database
-            });
+              avatarSeed: avatarSeed,
+            },
+            { new: true }
+          );
 
-            // Only emit participant joined for non-hosts
+          if (player) {
+            console.log(`Updated player ${playerId} connection status to true`);
+
+            // Broadcast to everyone in the room that a participant joined
             io.to(pin).emit("participantJoined", {
               id: playerId,
               name: playerName,
               userId,
-              avatarSeed, // Send the same seed to all clients
+              avatarSeed,
               role: "participant",
             });
           }
-
-          // Update participant count (excluding host)
-          const room = io.sockets.adapter.rooms.get(pin);
-          const participantCount = room
-            ? Array.from(room).filter((id) => {
-                const user = connectedUsers.get(id);
-                return user && !user.isHost;
-              }).length
-            : 0;
-
-          io.to(pin).emit("playerCount", { count: participantCount });
+        } catch (error) {
+          console.error(`Error updating player ${playerId}:`, error);
         }
-      } catch (error) {
-        console.error("Error joining quiz room:", error);
-        socket.emit("error", { message: "Failed to join quiz room" });
+      } else if (isHost) {
+        // For hosts, we'll just notify that they joined but not store in player DB
+        // If we do need to track hosts in the DB, add that code here
+        socket.emit("hostJoined", {
+          success: true,
+          pin,
+        });
       }
     }
   );
@@ -134,6 +248,11 @@ io.on("connection", (socket) => {
     } catch (error) {
       console.error("Error handling disconnect:", error);
     }
+  });
+
+  socket.on("disconnect", () => {
+    console.log(`Client disconnected: ${socket.id}`);
+    // Handle participant disconnection if necessary
   });
 
   socket.on("leaveQuizRoom", async ({ pin, playerId }) => {

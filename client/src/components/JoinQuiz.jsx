@@ -5,7 +5,8 @@ import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 
 const JoinQuiz = () => {
-  const socket = useSocket();
+  // Get socket, isConnected and emitEvent from the context
+  const { socket, isConnected, emitEvent } = useSocket();
   const [gamePin, setGamePin] = useState("");
   const [guestName, setGuestName] = useState("");
   const [error, setError] = useState("");
@@ -14,50 +15,74 @@ const JoinQuiz = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    // Socket connection handlers
-    socket.on("connect", () => {
-      console.log("Connected to quiz server");
-    });
+    // Only set up listeners if socket is available
+    if (!socket) return;
 
-    socket.on("connect_error", (error) => {
+    const handleConnect = () => {
+      console.log("Connected to quiz server");
+    };
+
+    const handleConnectError = (error) => {
       console.error("Socket connection error:", error);
       setError("Connection error. Please try again.");
-    });
+    };
 
-    socket.on("error", (error) => {
+    const handleError = (error) => {
       setError(error.message);
-    });
+    };
 
-    socket.on("playerJoined", (data) => {
+    const handlePlayerJoined = (data) => {
       console.log(`${data.playerName} joined the quiz`);
-    });
+    };
+
+    // Add event listeners
+    socket.on("connect", handleConnect);
+    socket.on("connect_error", handleConnectError);
+    socket.on("error", handleError);
+    socket.on("playerJoined", handlePlayerJoined);
 
     // Cleanup on unmount
     return () => {
-      socket.off("connect");
-      socket.off("connect_error");
-      socket.off("error");
-      socket.off("playerJoined");
+      if (socket) {
+        socket.off("connect", handleConnect);
+        socket.off("connect_error", handleConnectError);
+        socket.off("error", handleError);
+        socket.off("playerJoined", handlePlayerJoined);
+      }
     };
-  }, []);
+  }, [socket]); // Only re-run when socket changes
 
   const handleJoinQuiz = async (playerName) => {
     try {
+      // First join via the API
       const response = await api.post("/quiz/join", {
         pin: gamePin.trim(),
         playerName: playerName,
+        userId: user?._id,
       });
 
-      // Emit socket event to join room
-      socket.emit("joinQuizRoom", {
-        pin: gamePin.trim(),
-        playerName: playerName,
-      });
+      // Then emit socket event if connected
+      if (socket && isConnected) {
+        emitEvent("joinQuizRoom", {
+          pin: gamePin.trim(),
+          playerName: playerName,
+          playerId: response.data.player.id,
+          isHost: false,
+          userId: user?._id,
+        });
+      } else {
+        console.warn(
+          "Socket not connected - will rely only on API for joining"
+        );
+      }
 
+      // Navigate to waiting room
       navigate(`/waiting-room/${response.data.quizId}`, {
         state: {
           sessionId: response.data.sessionId,
           playerId: response.data.player.id,
+          playerName: playerName,
+          gamePin: gamePin.trim(),
         },
       });
     } catch (error) {
@@ -69,158 +94,75 @@ const JoinQuiz = () => {
   };
 
   const handleJoin = async () => {
-    try {
-      if (!gamePin.trim()) {
-        setError("Game PIN is required!");
-        return;
-      }
+    if (!gamePin.trim()) {
+      setError("Please enter a game PIN");
+      return;
+    }
 
-      if (user) {
-        // If user is logged in, join directly with their name
-        await handleJoinQuiz(user.name);
-      } else {
-        // If not logged in, show name overlay
-        setShowNameOverlay(true);
-      }
-    } catch (error) {
-      setError("Failed to join quiz. Please try again.");
+    setError(""); // Clear previous errors
+
+    if (user) {
+      // For logged-in users, use their profile name
+      handleJoinQuiz(user.name);
+    } else {
+      // For guests, show the name overlay
+      setShowNameOverlay(true);
     }
   };
 
-  const handleGuestSubmit = async (e) => {
-    e.preventDefault();
+  const handleGuestJoin = () => {
     if (!guestName.trim()) {
       setError("Please enter your name");
       return;
     }
-    await handleJoinQuiz(guestName);
+    handleJoinQuiz(guestName);
   };
 
   return (
-    <>
-      <div style={styles.container}>
-        {error && <div style={styles.error}>{error}</div>}
+    <div className="join-quiz-container">
+      <h2>Join a Quiz</h2>
+      {error && <div className="error-message">{error}</div>}
+
+      <div className="input-group">
         <input
           type="text"
           placeholder="Enter Game PIN"
           value={gamePin}
           onChange={(e) => setGamePin(e.target.value)}
-          style={styles.input}
+          className="game-pin-input"
         />
-        <button onClick={handleJoin} style={styles.button} disabled={!gamePin}>
+        <button onClick={handleJoin} className="join-button">
           Join
         </button>
       </div>
 
       {showNameOverlay && (
-        <div style={styles.overlay}>
-          <div style={styles.overlayContent}>
+        <div className="name-overlay">
+          <div className="name-container">
             <h3>Enter Your Name</h3>
-            <form onSubmit={handleGuestSubmit}>
-              <input
-                type="text"
-                placeholder="Your Name"
-                value={guestName}
-                onChange={(e) => setGuestName(e.target.value)}
-                style={styles.input}
-                autoFocus
-              />
-              <div style={styles.buttonGroup}>
-                <button type="submit" style={styles.button}>
-                  Join Quiz
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowNameOverlay(false)}
-                  style={styles.cancelButton}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+            <input
+              type="text"
+              placeholder="Your Name"
+              value={guestName}
+              onChange={(e) => setGuestName(e.target.value)}
+              className="name-input"
+            />
+            <div className="button-group">
+              <button
+                onClick={() => setShowNameOverlay(false)}
+                className="cancel-button"
+              >
+                Cancel
+              </button>
+              <button onClick={handleGuestJoin} className="join-button">
+                Join
+              </button>
+            </div>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
-};
-
-const styles = {
-  container: {
-    display: "flex",
-    alignItems: "center",
-    borderRadius: "10px",
-  },
-  error: {
-    color: "red",
-  },
-  input: {
-    width: "150px",
-    padding: "5px",
-    borderRadius: "10px",
-    fontSize: "15px",
-  },
-  button: {
-    width: "70px",
-    padding: "5px",
-    backgroundColor: "#007bff",
-    color: "#fff",
-    border: "none",
-    borderRadius: "10px",
-    fontSize: "16px",
-    cursor: "pointer",
-  },
-  buttonDisabled: {
-    backgroundColor: "#ccc",
-    cursor: "not-allowed",
-  },
-  guestOptions: {
-    display: "flex",
-    flexDirection: "row",
-  },
-  altButton: {
-    padding: "10px",
-    margin: "0 5px",
-    border: "none",
-    borderRadius: "5px",
-    backgroundColor: "#28a745",
-    color: "#fff",
-    cursor: "pointer",
-    fontSize: "14px",
-  },
-  overlay: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 1000,
-  },
-  overlayContent: {
-    backgroundColor: "white",
-    padding: "20px",
-    borderRadius: "10px",
-    width: "300px",
-  },
-  buttonGroup: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginTop: "15px",
-  },
-  cancelButton: {
-    width: "70px",
-    padding: "5px",
-    backgroundColor: "#dc3545",
-    color: "#fff",
-    border: "none",
-    borderRadius: "10px",
-    fontSize: "16px",
-    cursor: "pointer",
-  },
 };
 
 export default JoinQuiz;

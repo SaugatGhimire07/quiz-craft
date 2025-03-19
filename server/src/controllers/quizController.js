@@ -242,24 +242,51 @@ export const makeQuizLive = async (req, res) => {
 
 export const endQuiz = async (req, res) => {
   try {
-    const updatedQuiz = await Quiz.findOneAndUpdate(
-      { _id: req.params.id, createdBy: req.user._id },
-      { status: "draft" },
-      { new: true }
-    );
+    const { quizId } = req.params;
+    const { sessionId, closeSession } = req.body;
 
-    if (!updatedQuiz) {
-      return res
-        .status(404)
-        .json({ message: "Quiz not found or unauthorized" });
+    console.log("Ending quiz:", { quizId, sessionId, closeSession });
+
+    // First check if quiz exists
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) {
+      return res.status(404).json({ message: "Quiz not found" });
     }
 
-    await Player.deleteMany({ quizId: req.params.id });
-    res.json(updatedQuiz);
+    // Update quiz status
+    quiz.status = "draft";
+    await quiz.save();
+
+    // If closeSession is true, close the active session
+    if (closeSession && sessionId) {
+      const session = await QuizSession.findById(sessionId);
+      if (session) {
+        session.isActive = false;
+        session.status = "completed";
+        session.endedAt = new Date();
+        await session.save();
+
+        // Update all connected players
+        await Player.updateMany(
+          { sessionId: session._id },
+          {
+            isConnected: false,
+            socketId: null,
+          }
+        );
+      }
+    }
+
+    res.json({
+      message: "Quiz ended successfully",
+      quiz,
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Failed to end quiz", error: error.message });
+    console.error("Error ending quiz:", error);
+    res.status(500).json({
+      message: "Failed to end quiz",
+      error: error.message,
+    });
   }
 };
 
@@ -283,16 +310,25 @@ export const getQuizByGamePin = async (req, res) => {
 export const getOrCreateQuizSession = async (req, res) => {
   try {
     const { quizId } = req.params;
+    const isHostRequest = req.path.includes("/host");
+    const userId = req.user?._id;
 
-    // Find quiz
-    const quiz = await Quiz.findOne({
-      _id: quizId,
-      status: "live",
-    });
+    console.log(
+      `Session request for quiz ${quizId}, isHost: ${isHostRequest}, userId: ${userId}`
+    );
+
+    // Find quiz - for host requests, verify ownership
+    const quizQuery = isHostRequest
+      ? { _id: quizId, createdBy: userId }
+      : { _id: quizId, status: "live" };
+
+    const quiz = await Quiz.findOne(quizQuery);
 
     if (!quiz) {
       return res.status(404).json({
-        message: "Quiz not found or not active",
+        message: isHostRequest
+          ? "Quiz not found or not owned by you"
+          : "Quiz not found or not active",
       });
     }
 
@@ -300,17 +336,26 @@ export const getOrCreateQuizSession = async (req, res) => {
     let session = await QuizSession.findOne({
       quizId,
       isActive: true,
-      startedAt: null,
     });
 
     // Create new session if none exists
     if (!session) {
+      console.log(
+        `No active session found for quiz ${quizId}, creating new session`
+      );
       session = new QuizSession({
         quizId,
         hostId: quiz.createdBy, // Add the quiz creator as host
         isActive: true,
       });
       await session.save();
+      console.log(
+        `Created new session with ID ${session._id} and PIN ${session.pin}`
+      );
+    } else {
+      console.log(
+        `Found existing session with ID ${session._id} and PIN ${session.pin}`
+      );
     }
 
     res.json({
@@ -318,7 +363,7 @@ export const getOrCreateQuizSession = async (req, res) => {
       pin: session.pin,
       isActive: session.isActive,
       createdAt: session.createdAt,
-      hostId: session.hostId, // Include hostId in response
+      hostId: session.hostId,
     });
   } catch (error) {
     console.error("Session error:", error);
@@ -331,33 +376,80 @@ export const getOrCreateQuizSession = async (req, res) => {
 
 export const startQuizSession = async (req, res) => {
   try {
-    const quiz = await Quiz.findOne({
-      _id: req.params.quizId,
-      createdBy: req.user._id,
-    });
-    if (!quiz)
-      return res
-        .status(404)
-        .json({ message: "Quiz not found or unauthorized" });
+    const { quizId } = req.params;
+    const { startQuiz, setStartedAt } = req.body;
 
-    const session = await QuizSession.findOneAndUpdate(
-      { quizId: req.params.quizId, isActive: true, startedAt: null },
-      { isActive: false, startedAt: new Date() },
-      { new: true }
+    console.log(
+      `Starting session for quiz ${quizId}, explicitly setting startedAt:`,
+      setStartedAt
     );
 
-    if (!session)
-      return res.status(404).json({ message: "No active session found" });
+    // Find the quiz first
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) {
+      return res.status(404).json({ message: "Quiz not found" });
+    }
 
+    // Find the session by quizId, regardless of other conditions
+    let session = await QuizSession.findOne({ quizId, isActive: true });
+
+    // If no session exists, create a new one
+    if (!session) {
+      console.log(`No active session found for quiz ${quizId}, creating one`);
+      session = new QuizSession({
+        quizId,
+        hostId: quiz.createdBy,
+        isActive: true,
+        status: "active",
+        startedAt: new Date(),
+      });
+      await session.save();
+    } else {
+      // Update existing session
+      console.log(`Found existing session ${session._id}, updating status`);
+      session.startedAt = new Date();
+      session.status = "active";
+      session.isActive = true;
+      await session.save();
+    }
+
+    // Add verification step
+    const verifiedSession = await QuizSession.findById(session._id);
+
+    console.log("Session after update:", {
+      id: verifiedSession._id,
+      status: verifiedSession.status,
+      isActive: verifiedSession.isActive,
+      pin: verifiedSession.pin,
+    });
+
+    // Ensure we set startedAt explicitly when requested
+    if (setStartedAt) {
+      session.startedAt = new Date();
+      console.log("Explicitly setting startedAt to:", session.startedAt);
+    }
+
+    session.status = "active";
+    session.isActive = true;
+    await session.save();
+
+    // Return the session data with verification info
     res.json({
       sessionId: session._id,
       startedAt: session.startedAt,
       isActive: session.isActive,
+      status: session.status,
+      pin: session.pin,
+      verified:
+        verifiedSession.status === "active" &&
+        verifiedSession.isActive === true,
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Failed to start session", error: error.message });
+    console.error("Error starting session:", error);
+    res.status(500).json({
+      message: "Failed to start session",
+      error: error.message,
+    });
   }
 };
 
@@ -447,23 +539,35 @@ export const publishQuiz = async (req, res) => {
       });
     }
 
-    // Create or get active session
-    const session = await QuizSession.findOneAndUpdate(
-      {
-        quizId,
-        isActive: true,
-      },
-      {
-        quizId,
-        hostId: hostId,
-        isActive: true,
-      },
-      {
-        new: true,
-        upsert: true, // Create if doesn't exist
-        setDefaultsOnInsert: true,
-      }
-    );
+    // First check if there's already an active session for this quiz
+    let session = await QuizSession.findOne({
+      quizId,
+      isActive: true,
+    });
+
+    // If no active session exists, then create a new one
+    if (!session) {
+      console.log(`Creating new session for quiz ${quizId}`);
+      session = await QuizSession.findOneAndUpdate(
+        {
+          quizId,
+          hostId: hostId,
+        },
+        {
+          quizId,
+          hostId: hostId,
+          isActive: true,
+          status: "pending", // Set as pending until host starts the quiz
+        },
+        {
+          new: true,
+          upsert: true, // Create if doesn't exist
+          setDefaultsOnInsert: true,
+        }
+      );
+    } else {
+      console.log(`Reusing existing session ${session._id} for quiz ${quizId}`);
+    }
 
     // Update quiz status
     quiz.status = "live";
@@ -478,5 +582,156 @@ export const publishQuiz = async (req, res) => {
   } catch (error) {
     console.error("Error publishing quiz:", error);
     res.status(500).json({ message: "Failed to publish quiz" });
+  }
+};
+
+export const getSessionParticipants = async (req, res) => {
+  try {
+    const { pin } = req.params;
+    console.log(`Fetching participants for session with pin: ${pin}`);
+
+    // Try finding by both status and isActive to cover all cases
+    let session = await QuizSession.findOne({
+      pin,
+      $or: [
+        { status: "active" },
+        { isActive: true, status: { $ne: "completed" } },
+      ],
+    });
+
+    if (!session) {
+      console.log(
+        `No active session found for pin ${pin}, looking for any session`
+      );
+      session = await QuizSession.findOne({ pin });
+    }
+
+    if (!session) {
+      console.log(`No session found for pin: ${pin}`);
+      return res.status(404).json({
+        message: "No session found for this PIN",
+      });
+    }
+
+    console.log(
+      `Found session: ${session._id}, status: ${session.status}, active: ${session.isActive}`
+    );
+
+    // Find all players in this session
+    const participants = await Player.find({
+      sessionId: session._id,
+      isHost: { $ne: true }, // Exclude hosts
+    })
+      .select("_id name avatarSeed userId isHost isConnected")
+      .populate("userId", "_id name");
+
+    console.log(`Found ${participants.length} participants`);
+
+    res.json({
+      sessionId: session._id,
+      participants: participants.map((p) => ({
+        _id: p._id,
+        name: p.name,
+        userId: p.userId?._id || null,
+        userName: p.userId?.name || p.name,
+        avatarSeed:
+          p.avatarSeed || p.name?.toLowerCase().replace(/[^a-z0-9]/g, ""),
+        isConnected: p.isConnected || true,
+        role: "participant",
+      })),
+    });
+  } catch (error) {
+    console.error("Error fetching participants:", error);
+    res.status(500).json({
+      message: "Error fetching participants",
+      error: error.message,
+    });
+  }
+};
+
+// Add this function to your quizController.js
+export const getQuizStatus = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+
+    // Find the quiz
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) {
+      return res.status(404).json({ message: "Quiz not found" });
+    }
+
+    // Find active session
+    const session = await QuizSession.findOne({
+      quizId,
+      $or: [
+        { status: "active" },
+        { isActive: true, status: { $ne: "completed" } },
+      ],
+    });
+
+    // The key - check for startedAt as the definitive way to know if host started the quiz
+    const quizStarted = session?.startedAt != null;
+
+    res.json({
+      isLive: quiz.status === "live",
+      quizStatus: quiz.status,
+      sessionActive: session?.isActive || false,
+      sessionId: session?._id || null,
+      quizStarted: quizStarted,
+      startedAt: session?.startedAt || null,
+    });
+  } catch (error) {
+    console.error("Error checking quiz status:", error);
+    res.status(500).json({ message: "Error checking quiz status" });
+  }
+};
+
+export const getQuizForParticipant = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+
+    // Find the quiz but only return necessary data for participants
+    const quiz = await Quiz.findOne({
+      _id: quizId,
+      status: "live", // Only allow access to live quizzes
+    }).select("title questions");
+
+    if (!quiz) {
+      return res.status(404).json({ message: "Quiz not found or not active" });
+    }
+
+    // Make sure there's an active session
+    const session = await QuizSession.findOne({
+      quizId,
+      isActive: true,
+    });
+
+    if (!session) {
+      return res.status(403).json({
+        message: "No active session for this quiz",
+      });
+    }
+
+    // Create a safe version of the questions (without correct answers)
+    const safeQuestions = quiz.questions.map((q) => ({
+      _id: q._id,
+      questionText: q.questionText,
+      options: q.options,
+      timer: q.timer || 30,
+      type: q.type || "multiple-choice",
+      image: q.image,
+      correctOption: q.correctOption, // Keep for now but could remove for stricter security
+    }));
+
+    res.json({
+      title: quiz.title,
+      questions: safeQuestions,
+    });
+  } catch (error) {
+    console.error("Error fetching participant quiz data:", error);
+    res.status(500).json({
+      message: "Failed to fetch quiz data",
+      error: error.message,
+    });
   }
 };

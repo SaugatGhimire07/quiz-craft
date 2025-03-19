@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import PropTypes from "prop-types";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useSocket } from "../context/SocketContext";
+import { useAuth } from "../hooks/useAuth";
 import LogoOnly from "../assets/logo/logo-only.png";
 import BackgroundTheme from "../components/BackgroundTheme";
 import api from "../api/axios";
@@ -8,25 +9,233 @@ import "../styles/liveQuiz.css";
 
 const LiveQuiz = () => {
   const { quizId } = useParams();
+  const { socket, isConnected, emitEvent } = useSocket();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
   const [questions, setQuestions] = useState([]);
   const [selectedQuestionIndex, setSelectedQuestionIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState(null);
   const [isCorrect, setIsCorrect] = useState(null);
   const [timer, setTimer] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchQuiz = async () => {
+    // Check if coming from waiting room with a valid state
+    const fromWaitingRoom = location.state?.fromWaitingRoom;
+
+    // If not coming from waiting room, could be direct URL access
+    if (!fromWaitingRoom) {
+      console.log(
+        "Direct access to LiveQuiz detected - verifying authorization"
+      );
+      // The checkIfHost function will verify and redirect if needed
+    }
+
+    const checkIfHost = async () => {
       try {
-        const response = await api.get(`/quiz/${quizId}`);
-        setQuestions(response.data.questions);
-        setTimer(response.data.questions[0].timer); // Set initial timer
+        setIsLoading(true);
+        let retryCount = 0;
+        const maxRetries = 3;
+
+        // First check if the quiz is actually live/active
+        try {
+          const statusResponse = await api.get(`/quiz/${quizId}/status`);
+
+          // More strict check - specifically look for startedAt as the definitive indicator
+          if (
+            !statusResponse.data.isLive ||
+            !statusResponse.data.sessionActive ||
+            !statusResponse.data.quizStarted ||
+            !statusResponse.data.startedAt // Add this check - only allow if officially started
+          ) {
+            console.log(
+              "Quiz is not active yet. Redirecting to waiting room..."
+            );
+            navigate(`/waiting-room/${quizId}`, {
+              state: {
+                ...location.state,
+                quizLive: false,
+                unauthorized: true,
+              },
+            });
+            return;
+          }
+        } catch (error) {
+          console.error("Error checking quiz status:", error);
+          // On error, redirect to waiting room as fallback
+          navigate(`/waiting-room/${quizId}`, {
+            state: {
+              ...location.state,
+              error: "Failed to verify quiz status",
+            },
+          });
+          return;
+        }
+
+        // Skip trying to use the host-only endpoint if we already know the user is a participant
+        if (user && !location.state?.playerId) {
+          try {
+            // Try the authenticated endpoint first (for hosts)
+            const response = await api.get(`/quiz/${quizId}`);
+
+            // If successful and user is quiz creator, redirect to waiting room
+            if (response.data.createdBy === user._id) {
+              navigate(`/waiting-room/${quizId}`, {
+                state: {
+                  isHost: true,
+                  quizLive: true,
+                  ...location.state,
+                },
+              });
+              return;
+            }
+          } catch (error) {
+            // If this fails, continue to participant view
+            console.log("User is not the quiz host, continuing as participant");
+          }
+        } else {
+          console.log("User identified as a participant, skipping host check");
+        }
+
+        // For participants, use the participant endpoint with retry logic
+        async function fetchParticipantData(attempt = 0) {
+          try {
+            // Use the correct participant-view endpoint that doesn't require auth
+            const participantResponse = await api.get(
+              `/quiz/${quizId}/participant-view`
+            );
+
+            if (
+              !participantResponse.data ||
+              !participantResponse.data.questions
+            ) {
+              console.error(
+                "Invalid response from participant-view endpoint:",
+                participantResponse
+              );
+              throw new Error("Invalid quiz data received");
+            }
+
+            console.log(
+              "Successfully fetched participant quiz data:",
+              participantResponse.data
+            );
+            setQuestions(participantResponse.data.questions);
+
+            if (participantResponse.data.questions.length > 0) {
+              setTimer(participantResponse.data.questions[0].timer);
+            }
+            setIsLoading(false);
+          } catch (error) {
+            console.error(
+              `Error fetching quiz (attempt ${attempt + 1}):`,
+              error
+            );
+
+            if (
+              attempt < maxRetries &&
+              (error.response?.status === 403 || error.response?.status === 404)
+            ) {
+              // Quiz might not be fully initialized yet, retry after delay
+              console.log(
+                `Retrying participant view in ${(attempt + 1) * 1000}ms...`
+              );
+              setTimeout(
+                () => fetchParticipantData(attempt + 1),
+                (attempt + 1) * 1000
+              );
+            } else {
+              setIsLoading(false);
+              // After all retries failed, show a better error message
+              alert(
+                "Unable to join the quiz. Please go back to the waiting room and try again."
+              );
+
+              // Navigate back to waiting room
+              navigate(`/waiting-room/${quizId}`, {
+                state: {
+                  ...location.state,
+                  error: "Failed to load quiz data. Please try again.",
+                },
+              });
+            }
+          }
+        }
+
+        // Start the retry process
+        await fetchParticipantData();
       } catch (error) {
-        console.error("Error fetching quiz:", error);
+        console.error("Error in checkIfHost:", error);
+        setIsLoading(false);
       }
     };
 
-    fetchQuiz();
-  }, [quizId]);
+    checkIfHost();
+  }, [quizId, user, navigate, location.state]);
+
+  useEffect(() => {
+    if (!socket) {
+      console.error("Socket not available in LiveQuiz");
+      return;
+    }
+
+    console.log("LiveQuiz - Setting up socket listeners");
+    console.log("LiveQuiz - Socket ID:", socket.id);
+    console.log("LiveQuiz - Socket connected:", socket.connected);
+    console.log("LiveQuiz - Location state:", location.state);
+
+    // Join the quiz room immediately if gamePin is available
+    if (socket.connected && location.state?.gamePin) {
+      console.log("LiveQuiz - Joining room with PIN:", location.state.gamePin);
+      socket.emit("joinQuizRoom", {
+        pin: location.state.gamePin,
+        playerName: location.state?.playerName || "Anonymous",
+        playerId: location.state?.playerId,
+        isHost: false,
+        userId: user?._id,
+      });
+    }
+
+    const handleQuizStarted = ({ pin, quizId: startedQuizId, sessionId }) => {
+      console.log("LiveQuiz - Quiz started event received:", {
+        pin,
+        startedQuizId,
+        sessionId,
+      });
+      console.log("LiveQuiz - Current quiz ID:", quizId);
+
+      // Fetch quiz data
+      const fetchQuizData = async () => {
+        try {
+          console.log("LiveQuiz - Fetching quiz data");
+          const response = await api.get(`/quiz/${quizId}`);
+          console.log(
+            "LiveQuiz - Quiz data fetched:",
+            response.data.questions.length,
+            "questions"
+          );
+
+          setQuestions(response.data.questions);
+          if (response.data.questions.length > 0) {
+            setTimer(response.data.questions[0].timer);
+          }
+          setIsLoading(false);
+        } catch (error) {
+          console.error("Error fetching quiz:", error);
+          setIsLoading(false);
+        }
+      };
+
+      fetchQuizData();
+    };
+
+    socket.on("quizStarted", handleQuizStarted);
+
+    return () => {
+      socket.off("quizStarted", handleQuizStarted);
+    };
+  }, [socket, quizId, location.state, user]);
 
   useEffect(() => {
     setSelectedOption(null); // Reset selected option when question changes
@@ -49,7 +258,13 @@ const LiveQuiz = () => {
     if (selectedQuestionIndex < questions.length - 1) {
       setSelectedQuestionIndex(selectedQuestionIndex + 1);
     } else {
-      alert("Quiz completed!");
+      // Quiz completed - restart automatically without showing alert
+      setSelectedQuestionIndex(0);
+      setSelectedOption(null);
+      setIsCorrect(null);
+      if (questions.length > 0) {
+        setTimer(questions[0].timer);
+      }
     }
   };
 
@@ -70,6 +285,11 @@ const LiveQuiz = () => {
   };
 
   const currentQuestion = questions[selectedQuestionIndex];
+
+  // Show loading state
+  if (isLoading) {
+    return <div className="loading">Loading...</div>;
+  }
 
   return (
     <div>
@@ -243,19 +463,6 @@ const LiveQuiz = () => {
       </div>
     </div>
   );
-};
-
-LiveQuiz.propTypes = {
-  questions: PropTypes.array.isRequired,
-  selectedQuestionIndex: PropTypes.number.isRequired,
-  handleQuestionChange: PropTypes.func.isRequired,
-  handleImageClick: PropTypes.func.isRequired,
-  handleImageChange: PropTypes.func.isRequired,
-  handleDragOver: PropTypes.func.isRequired,
-  handleDrop: PropTypes.func.isRequired,
-  removeImage: PropTypes.func.isRequired,
-  fileInputRef: PropTypes.object.isRequired,
-  readOnly: PropTypes.bool,
 };
 
 export default LiveQuiz;

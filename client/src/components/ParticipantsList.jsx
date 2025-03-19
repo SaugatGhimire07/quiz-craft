@@ -26,28 +26,31 @@ const ParticipantsList = ({
     return (
       <div className="participant-grid">
         {activePlayers.map((player) => {
+          const playerId = player._id || player.id || "unknown";
+          const playerName = player.name || "Anonymous Player";
+
           const isCurrentPlayer =
             !isHost &&
-            (currentPlayerId === player._id ||
+            (currentPlayerId === playerId ||
               (user && user._id === player.userId));
 
           return (
             <div
-              key={player._id}
+              key={playerId}
               className={`participant-card ${
                 isCurrentPlayer ? "current-player" : ""
               }`}
             >
               <img
-                src={generateAvatar(player.avatarSeed || player.name)}
-                alt={`${isCurrentPlayer ? "Your" : `${player.name}'s`} avatar`}
+                src={generateAvatar(player.avatarSeed || playerName)}
+                alt={`${isCurrentPlayer ? "Your" : `${playerName}'s`} avatar`}
                 className="participant-avatar"
                 width="64"
                 height="64"
                 loading="lazy"
               />
               <span className="participant-name">
-                {isCurrentPlayer ? "You" : player.name}
+                {isCurrentPlayer ? "You" : playerName}
               </span>
               {isCurrentPlayer && (
                 <span className="you-badge">Current Player</span>

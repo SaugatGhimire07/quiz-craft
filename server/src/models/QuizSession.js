@@ -31,6 +31,11 @@ const quizSessionSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    status: {
+      type: String,
+      enum: ["pending", "active", "completed"],
+      default: "pending",
+    },
     createdAt: {
       type: Date,
       default: Date.now,
@@ -45,8 +50,13 @@ const quizSessionSchema = new mongoose.Schema(
   }
 );
 
-// Remove this line since 'unique: true' already creates an index
-// quizSessionSchema.index({ pin: 1 });
+// Pre-save hook to ensure consistency between isActive and status fields
+quizSessionSchema.pre("save", function (next) {
+  if (this.status === "active") {
+    this.isActive = true;
+  }
+  next();
+});
 
 const QuizSession = mongoose.model("QuizSession", quizSessionSchema);
 

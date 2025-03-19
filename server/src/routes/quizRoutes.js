@@ -13,6 +13,9 @@ import {
   getOrCreateQuizSession,
   startQuizSession,
   joinQuizSession,
+  getSessionParticipants,
+  getQuizStatus,
+  getQuizForParticipant,
 } from "../controllers/quizController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 
@@ -25,17 +28,21 @@ router.get("/:id", protect, getQuiz);
 router.put("/:id", protect, updateQuiz);
 router.delete("/:id", protect, deleteQuiz);
 router.patch("/:id/publish", protect, makeQuizLive);
-router.post("/:id/end", protect, endQuiz);
+router.post("/:quizId/end", protect, endQuiz);
 router.get("/gamepin/:gamePin", protect, getQuizByGamePin);
 router.get("/:quizId/session/active", getOrCreateQuizSession);
-router.post("/:quizId/session/start", protect, startQuizSession);
+router.post("/:quizId/session/start", startQuizSession);
 router.post("/join", joinQuizSession);
+router.get("/:quizId/status", getQuizStatus);
 
 // For participants (no auth required)
 router.get("/:quizId/session/active", getOrCreateQuizSession);
 router.get("/:quizId/session", getOrCreateQuizSession);
+router.get("/session/:pin/participants", getSessionParticipants);
+router.post("/:quizId/session/participant-start", startQuizSession);
+router.get("/:quizId/participant-view", getQuizForParticipant);
 
 // For hosts (auth required)
-router.post("/:quizId/session/host", protect, getOrCreateQuizSession);
+router.get("/:quizId/session/host", protect, getOrCreateQuizSession);
 
 export default router;

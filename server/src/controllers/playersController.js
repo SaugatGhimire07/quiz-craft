@@ -50,36 +50,68 @@ export const getPlayersByGamePin = async (req, res) => {
 export const getSessionParticipants = async (req, res) => {
   try {
     const { pin } = req.params;
+    console.log(`Fetching participants for session with pin: ${pin}`);
 
-    const session = await QuizSession.findOne({
+    // Try finding by both status and isActive to cover all cases
+    let session = await QuizSession.findOne({
       pin,
-      isActive: true,
+      $or: [
+        { status: "active" },
+        { isActive: true, status: { $ne: "completed" } },
+      ],
     });
 
     if (!session) {
+      console.log(
+        `No active session found for pin ${pin}, looking for any session`
+      );
+      session = await QuizSession.findOne({ pin });
+
+      if (session) {
+        console.log(
+          `Found inactive session with pin ${pin}, updating to active`
+        );
+
+        // If we found a session but it's not active, update it to active
+        session.isActive = true;
+        session.status = "active";
+        session.startedAt = session.startedAt || new Date();
+        await session.save();
+      }
+    }
+
+    if (!session) {
+      console.log(`No session found for pin: ${pin}`);
       return res.status(404).json({
-        message: "No active session found for this PIN",
+        message: "No session found for this PIN",
       });
     }
 
-    // Only get participants (not hosts) who are connected
+    console.log(
+      `Found session: ${session._id}, status: ${session.status}, active: ${session.isActive}`
+    );
+
+    // Find participants without filtering by isConnected
     const participants = await Player.find({
       sessionId: session._id,
-      isConnected: true,
-      isHost: { $ne: true }, // Exclude hosts from the query
+      isHost: { $ne: true }, // Still exclude hosts
     })
       .select("_id name avatarSeed userId isHost")
       .populate("userId", "_id name");
+
+    console.log(`Found ${participants.length} participants in database`);
 
     res.json({
       sessionId: session._id,
       participants: participants.map((p) => ({
         _id: p._id,
-        name: p.name, // No need to check isHost here since we filtered them out
+        name: p.name || "Anonymous",
         userId: p.userId?._id || null,
-        userName: p.userId?.name || p.name,
-        avatarSeed: p.avatarSeed,
-        isConnected: true,
+        userName: p.userId?.name || p.name || "Anonymous",
+        avatarSeed:
+          p.avatarSeed ||
+          p.name?.toLowerCase().replace(/[^a-z0-9]/g, "") + Date.now(),
+        isConnected: true, // Consider all players as connected
         role: "participant",
       })),
     });

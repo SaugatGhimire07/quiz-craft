@@ -61,6 +61,14 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Add this handler in your io.on("connection") block
+  socket.on("sendDirectMessage", ({ targetSocketId, event, data }) => {
+    if (targetSocketId && event) {
+      console.log(`Forwarding ${event} to socket ${targetSocketId}`);
+      io.to(targetSocketId).emit(event, data);
+    }
+  });
+
   // Clean up on disconnect
   socket.on("disconnect", () => {
     const userData = connectedUsers.get(socket.id);
