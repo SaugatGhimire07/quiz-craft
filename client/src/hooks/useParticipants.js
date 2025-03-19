@@ -26,6 +26,88 @@ export const useParticipants = (
     }
   }, [socket, isConnected]);
 
+  // Add this at the beginning of the hook after state declarations
+  useEffect(() => {
+    if (!socket || !location.state?.playerId) return;
+
+    // Attempt to reconnect player when socket connects
+    const handleConnect = async () => {
+      try {
+        await api.post(`/players/${location.state.playerId}/reconnect`, {
+          socketId: socket.id,
+        });
+
+        // Re-join room after reconnection
+        if (isConnected && gamePin) {
+          emitEvent("joinQuizRoom", {
+            pin: gamePin,
+            playerName,
+            playerId: location.state.playerId,
+            isHost,
+            userId: user?._id,
+          });
+        }
+      } catch (error) {
+        console.error("Error reconnecting player:", error);
+      }
+    };
+
+    socket.on("connect", handleConnect);
+
+    return () => {
+      socket.off("connect", handleConnect);
+    };
+  }, [socket, location.state?.playerId, isConnected, gamePin]);
+
+  // Join room effect
+  useEffect(() => {
+    if (!gamePin || !socket) return;
+
+    const joinRoom = () => {
+      if (socket.connected) {
+        console.log(`Joining quiz room ${gamePin} as participant`);
+        emitEvent("joinQuizRoom", {
+          pin: gamePin,
+          playerName,
+          playerId: location.state?.playerId,
+          isHost: false,
+          userId: undefined,
+        });
+      }
+    };
+
+    // Initial join
+    joinRoom();
+
+    // Handle reconnection
+    const handleReconnect = () => {
+      console.log("Socket reconnected, rejoining room");
+      joinRoom();
+    };
+
+    socket.on("connect", handleReconnect);
+
+    return () => {
+      socket.off("connect", handleReconnect);
+
+      // Only leave if we're connected
+      if (socket.connected && !isHost && location.state?.playerId) {
+        console.log(`Leaving quiz room ${gamePin}`);
+        emitEvent("leaveQuizRoom", {
+          pin: gamePin,
+          playerId: location.state.playerId,
+        });
+      }
+    };
+  }, [
+    gamePin,
+    socket,
+    emitEvent,
+    playerName,
+    location.state?.playerId,
+    isHost,
+  ]);
+
   // Join the room and fetch participants
   useEffect(() => {
     if (!gamePin) return; // No game pin, can't proceed
@@ -70,38 +152,6 @@ export const useParticipants = (
 
     // Initial fetch
     fetchParticipants();
-
-    // Join the quiz room when socket is connected
-    if (isConnected) {
-      console.log(
-        `Joining quiz room ${gamePin} as ${
-          isHost ? "host" : "participant"
-        } with ID: ${socket.id}`
-      );
-
-      // Prepare host data properly
-      const hostId = isHost ? `host-${user?._id || "anonymous"}` : null;
-      const participantId = isHost ? null : location.state?.playerId;
-
-      // Add a callback to confirm the room was joined
-      emitEvent(
-        "joinQuizRoom",
-        {
-          pin: gamePin,
-          playerName: isHost ? "Quiz Host" : playerName,
-          playerId: isHost ? hostId : participantId,
-          isHost,
-          userId: user?._id,
-        },
-        (response) => {
-          if (response && response.success) {
-            console.log(`Successfully joined room ${gamePin}`);
-          } else {
-            console.error(`Failed to join room ${gamePin}`, response);
-          }
-        }
-      );
-    }
 
     // Set up polling for both host and participants
     pollInterval = setInterval(fetchParticipants, isHost ? 2000 : 5000); // Poll more frequently for host

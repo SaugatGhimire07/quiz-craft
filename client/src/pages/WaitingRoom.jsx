@@ -64,96 +64,54 @@ const WaitingRoom = () => {
     try {
       console.log("Starting quiz with sessionId:", sessionId);
 
-      // We have a sessionId, or we'll try to proceed without one
-      const endpoint = `/quiz/${quizId}/session/start`;
-      console.log("Using endpoint:", endpoint);
-
-      // Make the API call with explicit startedAt field
-      const startResponse = await api.post(endpoint, {
+      // Start the quiz via API first
+      const startResponse = await api.post(`/quiz/${quizId}/session/start`, {
         startQuiz: true,
         setStartedAt: true,
       });
-      console.log("Quiz start response:", startResponse.data);
 
-      // Get the session ID from the response
+      console.log("Quiz start response:", startResponse.data);
       const currentSessionId = startResponse?.data?.sessionId || sessionId;
 
       if (!currentSessionId) {
-        console.error("No session ID available after attempts");
-        alert("Failed to start quiz: Session ID not available");
-        return;
+        throw new Error("No session ID available");
       }
 
-      // Add debugging for socket
-      console.log("Socket connected:", socket?.connected);
-      console.log("Socket ID:", socket?.id);
+      // If socket is not connected, try to reconnect
+      if (!socket?.connected) {
+        console.log("Socket not connected, attempting to reconnect...");
+        socket?.connect();
 
-      // Emit the socket event to start the quiz
+        // Wait for connection
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(
+            () => reject(new Error("Socket connection timeout")),
+            5000
+          );
+
+          socket.once("connect", () => {
+            clearTimeout(timeout);
+            resolve();
+          });
+        });
+      }
+
+      // Now emit the socket event
       if (socket?.connected) {
-        console.log("Emitting startQuiz event:", {
+        console.log("Emitting startQuiz event");
+        socket.emit("startQuiz", {
           pin: gamePin,
           quizId,
           sessionId: currentSessionId,
         });
 
-        socket.emit(
-          "startQuiz",
-          {
-            pin: gamePin,
-            quizId,
-            sessionId: currentSessionId,
-          },
-          (acknowledgement) => {
-            console.log(
-              "Server acknowledged startQuiz event:",
-              acknowledgement
-            );
-
-            // If we get a successful acknowledgement but socket events still fail,
-            // we can force redirect all participants programmatically from here
-            if (acknowledgement.success) {
-              // The server could return a list of participant socket IDs
-              if (acknowledgement.participantIds) {
-                // For each participant, send a direct message through the server instead
-                acknowledgement.participantIds.forEach((participantId) => {
-                  // Using emitEvent instead of socket.to since client can't send directly to other clients
-                  socket.emit("sendDirectMessage", {
-                    targetSocketId: participantId,
-                    event: "directQuizStart",
-                    data: {
-                      pin: gamePin,
-                      quizId,
-                      sessionId: currentSessionId,
-                    },
-                  });
-                });
-              }
-            }
-          }
-        );
-
-        console.log("Quiz started for participants");
-
-        // Update local state
         setQuizLive(true);
-
-        // IMPORTANT: For host only - no fallback timer since host stays on this page
-        // The fallback timer should only be triggered in the participant's browser
-        // when the host starts the quiz
       } else {
-        console.error("Socket not connected, can't emit startQuiz event");
-        alert("Socket connection issue. Please refresh and try again.");
+        throw new Error("Socket connection failed");
       }
     } catch (error) {
       console.error("Error starting quiz:", error);
-
-      if (error.response?.data?.message) {
-        alert(`Failed to start the quiz: ${error.response.data.message}`);
-      } else if (error.message) {
-        alert(`Failed to start the quiz: ${error.message}`);
-      } else {
-        alert("Failed to start the quiz. Please try again.");
-      }
+      alert(error.message || "Failed to start quiz. Please try again.");
     }
   };
 
@@ -224,17 +182,7 @@ const WaitingRoom = () => {
   const handleLeaveQuiz = async () => {
     try {
       if (!isHost && location.state?.playerId) {
-        // Clean up avatar data for this participant
-        const participantKey = `avatar_${location.state.playerId}_${quizId}`;
-        sessionStorage.removeItem(participantKey);
-
-        // First update the local state
-        setPlayers((prevPlayers) =>
-          prevPlayers.filter((player) => player._id !== location.state.playerId)
-        );
-        setPlayerCount((prevCount) => Math.max(0, prevCount - 1));
-
-        // Emit socket event to notify others
+        // First emit socket event before disconnecting
         if (socket?.connected) {
           socket.emit("leaveQuizRoom", {
             pin: gamePin,
@@ -242,27 +190,34 @@ const WaitingRoom = () => {
           });
         }
 
+        // Update database
         try {
-          // Update player status in database
           await api.post(`/players/${location.state.playerId}/leave`);
         } catch (error) {
           console.error("Error updating player status:", error);
         }
 
-        // Disconnect socket
+        // Clean up storage
+        const participantKey = `avatar_${location.state.playerId}_${quizId}`;
+        sessionStorage.removeItem(participantKey);
+        sessionStorage.removeItem(`quiz_session_${quizId}`);
+
+        // Update local state
+        setPlayers((prevPlayers) =>
+          prevPlayers.filter((player) => player._id !== location.state.playerId)
+        );
+        setPlayerCount((prevCount) => Math.max(0, prevCount - 1));
+
+        // Disconnect socket last
         if (socket?.connected) {
           socket.disconnect();
         }
 
-        // Clear session storage
-        sessionStorage.removeItem(`quiz_session_${quizId}`);
-
-        // Navigate back to home
+        // Navigate after all cleanup is done
         navigate("/", { replace: true });
       }
     } catch (error) {
       console.error("Error leaving quiz:", error);
-      // Still try to navigate away even if there's an error
       navigate("/", { replace: true });
     }
   };
@@ -339,27 +294,33 @@ const WaitingRoom = () => {
         isHost,
       });
 
-      // Double-check with server that quiz is actually started (to prevent race conditions)
       try {
+        // Verify quiz status
         const statusResponse = await api.get(`/quiz/${quizId}/status`);
+        const isQuizActive =
+          statusResponse.data.quizStarted &&
+          statusResponse.data.startedAt &&
+          statusResponse.data.sessionActive;
 
-        if (
-          !statusResponse.data.quizStarted ||
-          !statusResponse.data.startedAt
-        ) {
-          console.log(
-            "Received quiz started event but server says quiz is not started yet. Ignoring."
-          );
+        if (!isQuizActive) {
+          console.log("Quiz not fully started yet, waiting...");
           return;
         }
 
-        // Save received sessionId
+        // Save session ID for both guest and logged-in users
         if (receivedSessionId) {
           localStorage.setItem(`quiz_session_${quizId}`, receivedSessionId);
         }
 
-        // IMPORTANT: Only redirect participants, not hosts
-        if (!isHost) {
+        // Don't redirect if user is host
+        if (isHost) {
+          console.log("Host updating UI to show quiz is live");
+          setQuizLive(true);
+          return;
+        }
+
+        // For both guests and logged-in participants
+        if (location.state?.playerId) {
           console.log("Participant redirecting to live quiz...");
           navigate(`/live/${quizId}`, {
             state: {
@@ -368,14 +329,17 @@ const WaitingRoom = () => {
               fromWaitingRoom: true,
               quizLive: true,
               sessionId: receivedSessionId || sessionId,
+              isGuest: !user, // Add flag to identify guest users
             },
+            replace: true, // Use replace to prevent going back
           });
         } else {
-          console.log("Host updating UI to show quiz is live");
-          setQuizLive(true);
+          console.error("No player ID found in location state");
+          // Fallback to waiting room with error
+          setError("Failed to join quiz. Please try rejoining.");
         }
       } catch (error) {
-        console.error("Error verifying quiz started status:", error);
+        console.error("Error handling quiz start:", error);
       }
     };
 
@@ -445,15 +409,16 @@ const WaitingRoom = () => {
         try {
           const response = await api.get(`/quiz/${quizId}/status`);
 
-          // More strict checking of quiz status
-          if (
+          // Check if quiz is active
+          const isQuizActive =
             response.data.isLive &&
             response.data.quizStarted &&
             response.data.sessionActive &&
-            response.data.startedAt
-          ) {
+            response.data.startedAt;
+
+          if (isQuizActive && location.state?.playerId) {
             console.log(
-              "Poll detected quiz is officially started, redirecting..."
+              "Poll detected quiz is started, redirecting participant..."
             );
             navigate(`/live/${quizId}`, {
               state: {
@@ -462,8 +427,10 @@ const WaitingRoom = () => {
                 fromWaitingRoom: true,
                 quizLive: true,
                 sessionId,
+                isGuest: !user,
                 fallback: true,
               },
+              replace: true,
             });
           }
         } catch (error) {
@@ -473,7 +440,16 @@ const WaitingRoom = () => {
 
       return () => clearInterval(pollInterval);
     }
-  }, [isHost, quizId, quizLive, navigate, gamePin, location.state, sessionId]);
+  }, [
+    isHost,
+    quizId,
+    quizLive,
+    navigate,
+    gamePin,
+    location.state,
+    sessionId,
+    user,
+  ]);
 
   return (
     <div className="waiting-room">
