@@ -6,7 +6,7 @@ import ConfirmationOverlay from "../components/ConfirmationOverlay";
 import { useAuth } from "../hooks/useAuth";
 import api from "../api/axios";
 import "../styles/userdashboard.css";
-import "../styles/adminorganization.css"; // New CSS file for additional styles
+import "../styles/adminorganization.css";
 
 const AdminOrganization = () => {
   const { user, isAdmin } = useAuth();
@@ -22,6 +22,7 @@ const AdminOrganization = () => {
   const [showModifyOrg, setShowModifyOrg] = useState(false);
   const [showCreatePerson, setShowCreatePerson] = useState(false);
   const [showModifyPerson, setShowModifyPerson] = useState(false);
+  const [showImportPerson, setShowImportPerson] = useState(false);
   const [currentPerson, setCurrentPerson] = useState(null);
   const [activeDropdown, setActiveDropdown] = useState(null);
   const navigate = useNavigate();
@@ -69,6 +70,7 @@ const AdminOrganization = () => {
     setShowModifyOrg(false);
     setShowCreatePerson(false);
     setShowModifyPerson(false);
+    setShowImportPerson(false);
   };
 
   const handleModifyOrg = (orgId) => {
@@ -77,6 +79,7 @@ const AdminOrganization = () => {
     setShowModifyOrg(true);
     setShowCreatePerson(false);
     setShowModifyPerson(false);
+    setShowImportPerson(false);
   };
 
   const handleSelectOrg = (orgId) => {
@@ -86,6 +89,7 @@ const AdminOrganization = () => {
     setShowModifyOrg(false);
     setShowCreatePerson(false);
     setShowModifyPerson(false);
+    setShowImportPerson(false);
   };
 
   const handleCreatePerson = () => {
@@ -93,6 +97,7 @@ const AdminOrganization = () => {
     setShowModifyOrg(false);
     setShowCreatePerson(true);
     setShowModifyPerson(false);
+    setShowImportPerson(false);
   };
 
   const handleModifyPerson = (person) => {
@@ -101,6 +106,7 @@ const AdminOrganization = () => {
     setShowModifyOrg(false);
     setShowCreatePerson(false);
     setShowModifyPerson(true);
+    setShowImportPerson(false);
   };
 
   const confirmDeletePerson = (e, person) => {
@@ -129,6 +135,60 @@ const AdminOrganization = () => {
       setActiveDropdown(orgId);
       handleSelectOrg(orgId);
     }
+  };
+
+  const ImportPeople = ({ orgId, onClose, onImport }) => {
+    const [file, setFile] = useState(null);
+
+    const handleFileChange = (e) => {
+      setFile(e.target.files[0]);
+    };
+
+    const handleSubmit = async () => {
+      if (!file) {
+        alert("Please select a file to upload.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const response = await api.post(
+          `/organization/${orgId}/import-people`,
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+        onImport(response.data);
+        onClose();
+      } catch (error) {
+        console.error("Error importing people:", error);
+        alert("Failed to import people. Please try again.");
+      }
+    };
+
+    return (
+      <div className="import-people-container">
+        <h2>Import People</h2>
+        <div className="form-group">
+          <label htmlFor="file">Select Excel File</label>
+          <input
+            type="file"
+            id="file"
+            accept=".xlsx, .xls"
+            onChange={handleFileChange}
+          />
+        </div>
+        <button onClick={handleSubmit}>Import</button>
+        <button className="cancel" onClick={onClose}>
+          Cancel
+        </button>
+      </div>
+    );
   };
 
   const CreateOrganization = () => {
@@ -161,7 +221,9 @@ const AdminOrganization = () => {
           />
         </div>
         <button onClick={handleCreateOrg}>Create</button>
-        <button className="cancel" onClick={handleCancel}>Cancel</button>
+        <button className="cancel" onClick={handleCancel}>
+          Cancel
+        </button>
       </div>
     );
   };
@@ -205,7 +267,9 @@ const AdminOrganization = () => {
           />
         </div>
         <button onClick={handleModifyOrg}>Save</button>
-        <button className="cancel" onClick={() => setShowModifyOrg(false)}>Cancel</button>
+        <button className="cancel" onClick={() => setShowModifyOrg(false)}>
+          Cancel
+        </button>
       </div>
     );
   };
@@ -213,24 +277,37 @@ const AdminOrganization = () => {
   const CreatePerson = () => {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
+    const [error, setError] = useState(""); // State for error message
 
     const handleCreatePerson = async () => {
+      // Check if email already exists
+      const isDuplicate = people.some((person) => person.email === email);
+      if (isDuplicate) {
+        setError("Duplicate email address is not allowed.");
+        return; // Stop execution if duplicate is found
+      }
+
       try {
         await api.post(`/organization/${selectedOrg}/people`, { name, email });
         fetchPeople(selectedOrg);
         setShowCreatePerson(false);
+        setError(""); // Clear error message on success
       } catch (error) {
         console.error("Error creating person:", error);
+        setError("Failed to create person. Please try again.");
       }
     };
 
     const handleCancel = () => {
       setShowCreatePerson(false);
+      setError(""); // Clear error message on cancel
     };
 
     return (
       <div className="create-person-container">
         <h2>Create Person</h2>
+        {error && <div className="error-message">{error}</div>}{" "}
+        {/* Display error message */}
         <div className="form-group">
           <label htmlFor="name">Name</label>
           <input
@@ -250,7 +327,9 @@ const AdminOrganization = () => {
           />
         </div>
         <button onClick={handleCreatePerson}>Create</button>
-        <button className="cancel" onClick={handleCancel}>Cancel</button>
+        <button className="cancel" onClick={handleCancel}>
+          Cancel
+        </button>
       </div>
     );
   };
@@ -291,7 +370,9 @@ const AdminOrganization = () => {
           />
         </div>
         <button onClick={handleModifyPerson}>Save</button>
-        <button className="cancel" onClick={() => setShowModifyPerson(false)}>Cancel</button>
+        <button className="cancel" onClick={() => setShowModifyPerson(false)}>
+          Cancel
+        </button>
       </div>
     );
   };
@@ -302,7 +383,11 @@ const AdminOrganization = () => {
 
       <div className="content-container">
         <div className="main-content">
-          <SidebarNav active="organization" showBackButton={false} isAdmin={user?.isAdmin} />
+          <SidebarNav
+            active="organization"
+            showBackButton={false}
+            isAdmin={user?.isAdmin}
+          />
 
           <div className="dashboard-content">
             <h1 className="dashboard-title">Organization</h1>
@@ -316,31 +401,50 @@ const AdminOrganization = () => {
             <table className="organization-table">
               <thead>
                 <tr className="organization-table-row">
-                  <th className="organization-table-header">Organization Name</th>
+                  <th className="organization-table-header">
+                    Organization Name
+                  </th>
                   <th className="organization-table-header">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr className="organization-table-row">
-                    <td className="organization-table-data" colSpan="2">Loading organizations...</td>
+                    <td className="organization-table-data" colSpan="2">
+                      Loading organizations...
+                    </td>
                   </tr>
                 ) : organizations.length > 0 ? (
                   organizations.map((org) => (
                     <React.Fragment key={org._id}>
                       <tr className="organization-table-row">
-                        <td className="organization-table-data" onClick={() => toggleDropdown(org._id)}>
+                        <td
+                          className="organization-table-data"
+                          onClick={() => toggleDropdown(org._id)}
+                        >
                           {org.name}
                           <button className="dropdown-arrow">
                             {activeDropdown === org._id ? "▲" : "▼"}
                           </button>
                         </td>
                         <td className="organization-table-data">
-                          <button className="action-button" onClick={() => handleModifyOrg(org._id)}>
+                          <button
+                            className="action-button modify"
+                            onClick={() => handleModifyOrg(org._id)}
+                          >
                             <i className="fas fa-edit"></i> Modify
                           </button>
-                          <button className="action-button" onClick={() => handleCreatePerson()}>
+                          <button
+                            className="action-button add-person"
+                            onClick={() => handleCreatePerson()}
+                          >
                             <i className="fas fa-user-plus"></i> Add Person
+                          </button>
+                          <button
+                            className="action-button import"
+                            onClick={() => setShowImportPerson(true)}
+                          >
+                            <i className="fas fa-file-import"></i> Import People
                           </button>
                         </td>
                       </tr>
@@ -352,28 +456,53 @@ const AdminOrganization = () => {
                                 <tr className="people-table-row">
                                   <th className="people-table-header">Name</th>
                                   <th className="people-table-header">Email</th>
-                                  <th className="people-table-header">Actions</th>
+                                  <th className="people-table-header">
+                                    Actions
+                                  </th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {people.length > 0 ? (
                                   people.map((person) => (
-                                    <tr className="people-table-row" key={person._id}>
-                                      <td className="people-table-data">{person.name}</td>
-                                      <td className="people-table-data">{person.email}</td>
+                                    <tr
+                                      className="people-table-row"
+                                      key={person._id}
+                                    >
                                       <td className="people-table-data">
-                                        <button className="action-button" onClick={() => handleModifyPerson(person)}>
+                                        {person.name}
+                                      </td>
+                                      <td className="people-table-data">
+                                        {person.email}
+                                      </td>
+                                      <td className="people-table-data">
+                                        <button
+                                          className="action-button modify"
+                                          onClick={() =>
+                                            handleModifyPerson(person)
+                                          }
+                                        >
                                           <i className="fas fa-edit"></i> Modify
                                         </button>
-                                        <button className="action-button" onClick={(e) => confirmDeletePerson(e, person)}>
-                                          <i className="fas fa-trash"></i> Delete
+                                        <button
+                                          className="action-button delete"
+                                          onClick={(e) =>
+                                            confirmDeletePerson(e, person)
+                                          }
+                                        >
+                                          <i className="fas fa-trash"></i>{" "}
+                                          Delete
                                         </button>
                                       </td>
                                     </tr>
                                   ))
                                 ) : (
                                   <tr className="people-table-row">
-                                    <td className="people-table-data" colSpan="3">No people found in this organization.</td>
+                                    <td
+                                      className="people-table-data"
+                                      colSpan="3"
+                                    >
+                                      No people found in this organization.
+                                    </td>
                                   </tr>
                                 )}
                               </tbody>
@@ -385,7 +514,9 @@ const AdminOrganization = () => {
                   ))
                 ) : (
                   <tr className="organization-table-row">
-                    <td className="organization-table-data" colSpan="2">No organizations found.</td>
+                    <td className="organization-table-data" colSpan="2">
+                      No organizations found.
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -395,6 +526,16 @@ const AdminOrganization = () => {
             {showModifyOrg && <ModifyOrganization />}
             {showCreatePerson && <CreatePerson />}
             {showModifyPerson && <ModifyPerson />}
+            {showImportPerson && (
+              <ImportPeople
+                orgId={selectedOrg}
+                onClose={() => setShowImportPerson(false)}
+                onImport={(importedPeople) => {
+                  setPeople([...people, ...importedPeople]);
+                  setShowImportPerson(false);
+                }}
+              />
+            )}
           </div>
         </div>
       </div>
