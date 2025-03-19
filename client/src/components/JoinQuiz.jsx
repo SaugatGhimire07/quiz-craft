@@ -1,3 +1,4 @@
+import "../styles/joinQuiz.css";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
@@ -120,21 +121,24 @@ const JoinQuiz = () => {
 
   return (
     <div className="join-quiz-container">
-      <h2>Join a Quiz</h2>
       {error && <div className="error-message">{error}</div>}
 
-      <div className="input-group">
+      <div className="pincode-input">
         <input
           type="text"
-          placeholder="Enter Game PIN"
+          placeholder="123456"
           value={gamePin}
           onChange={(e) => setGamePin(e.target.value)}
           className="game-pin-input"
         />
-        <button onClick={handleJoin} className="join-button">
-          Join
-        </button>
       </div>
+
+      <button
+        onClick={handleJoin}
+        className={`pincode-button ${gamePin.trim() ? "active" : ""}`}
+      >
+        Join
+      </button>
 
       {showNameOverlay && (
         <div className="name-overlay">

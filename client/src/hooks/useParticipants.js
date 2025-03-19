@@ -15,10 +15,22 @@ export const useParticipants = (
   const [playerCount, setPlayerCount] = useState(0);
   const { socket, isConnected, emitEvent } = useSocket();
 
+  // Add connection status effect
+  useEffect(() => {
+    if (socket) {
+      console.log("Socket status:", {
+        id: socket.id,
+        connected: socket.connected,
+        disconnected: socket.disconnected,
+      });
+    }
+  }, [socket, isConnected]);
+
   // Join the room and fetch participants
   useEffect(() => {
     if (!gamePin) return; // No game pin, can't proceed
     let mounted = true;
+    let pollInterval;
 
     // Debug logging
     console.log("useParticipants initialized with:", {
@@ -34,69 +46,22 @@ export const useParticipants = (
       try {
         console.log(`Fetching participants for game ${gamePin}`);
 
-        // Try the players route first
-        try {
-          const response = await api.get(
-            `/players/session/${gamePin}/participants`
+        const response = await api.get(
+          `/players/session/${gamePin}/participants`
+        );
+
+        if (mounted && response?.data?.participants) {
+          // Only include connected participants
+          const connectedParticipants = response.data.participants.filter(
+            (participant) => participant.isConnected
           );
 
-          if (mounted && response?.data?.participants) {
-            console.log(
-              `Found ${response.data.participants.length} participants`
-            );
-
-            // Process participants...
-            const apiParticipants = response.data.participants.map(
-              (participant) => ({
-                ...participant,
-                avatarSeed:
-                  sessionStorage.getItem(
-                    `avatar_${participant._id}_${quizId}`
-                  ) || participant.avatarSeed,
-              })
-            );
-
-            // Update state with fetched participants
-            setPlayers((currentPlayers) => {
-              // Create a map of existing players by ID for quick lookup
-              const existingPlayersMap = new Map(
-                currentPlayers.map((player) => [player._id, player])
-              );
-
-              // Merge API participants with socket participants
-              const mergedParticipants = apiParticipants.map((apiPlayer) => {
-                const existingPlayer = existingPlayersMap.get(apiPlayer._id);
-                return existingPlayer
-                  ? { ...existingPlayer, ...apiPlayer }
-                  : apiPlayer;
-              });
-
-              // Add any socket participants not returned by the API
-              currentPlayers.forEach((socketPlayer) => {
-                if (
-                  !mergedParticipants.some((p) => p._id === socketPlayer._id)
-                ) {
-                  mergedParticipants.push(socketPlayer);
-                }
-              });
-
-              return mergedParticipants;
-            });
-
-            setPlayerCount(apiParticipants.length);
-          }
-        } catch (firstError) {
-          console.log("First endpoint failed, trying fallback...");
-
-          // If first endpoint fails, try the quiz route as fallback
-          const fallbackResponse = await api.get(
-            `/quiz/session/${gamePin}/participants`
+          console.log(
+            `Found ${connectedParticipants.length} connected participants`
           );
 
-          if (mounted && fallbackResponse?.data?.participants) {
-            // Process as before...
-            // (similar code to above)
-          }
+          setPlayers(connectedParticipants);
+          setPlayerCount(connectedParticipants.length);
         }
       } catch (error) {
         console.error("Error fetching participants:", error);
@@ -138,24 +103,36 @@ export const useParticipants = (
       );
     }
 
-    // Set up polling for participants
-    const pollInterval = setInterval(fetchParticipants, 5000);
+    // Set up polling for both host and participants
+    pollInterval = setInterval(fetchParticipants, isHost ? 2000 : 5000); // Poll more frequently for host
 
-    // Cleanup function
+    // Enhanced cleanup function
     return () => {
       mounted = false;
-      clearInterval(pollInterval);
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
 
       // Leave room on unmount if we're a participant
       if (!isHost && location.state?.playerId && isConnected) {
         console.log(`Leaving quiz room ${gamePin}`);
+
+        // Clear all related storage
         sessionStorage.removeItem(
           `avatar_${location.state.playerId}_${quizId}`
         );
+        localStorage.removeItem(`quiz_session_${quizId}`);
+
+        // Emit leave event
         emitEvent("leaveQuizRoom", {
           pin: gamePin,
           playerId: location.state?.playerId,
         });
+
+        // Force disconnect socket
+        if (socket?.connected) {
+          socket.disconnect();
+        }
       }
     };
   }, [
@@ -168,6 +145,7 @@ export const useParticipants = (
     navigate,
     isConnected,
     emitEvent,
+    socket,
   ]);
 
   // Listen for avatar updates
@@ -252,10 +230,11 @@ export const useParticipants = (
     };
 
     const handlePlayerLeft = ({ playerId }) => {
-      console.log("Player left:", playerId);
-      setPlayers((currentPlayers) =>
-        currentPlayers.filter((player) => player._id !== playerId)
+      console.log("Player left event received:", playerId);
+      setPlayers((prevPlayers) =>
+        prevPlayers.filter((player) => player._id !== playerId)
       );
+      setPlayerCount((prevCount) => Math.max(0, prevCount - 1));
     };
 
     socket.on("participantJoined", handleParticipantJoined);
@@ -266,6 +245,23 @@ export const useParticipants = (
       socket.off("playerLeft", handlePlayerLeft);
     };
   }, [socket]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handlePlayerLeft = ({ playerId }) => {
+      setPlayers((prevPlayers) =>
+        prevPlayers.filter((player) => player._id !== playerId)
+      );
+      setPlayerCount((prevCount) => Math.max(0, prevCount - 1));
+    };
+
+    socket.on("playerLeft", handlePlayerLeft);
+
+    return () => {
+      socket.off("playerLeft", handlePlayerLeft);
+    };
+  }, [socket, setPlayers, setPlayerCount]);
 
   return {
     players,

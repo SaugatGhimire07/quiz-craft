@@ -228,25 +228,42 @@ const WaitingRoom = () => {
         const participantKey = `avatar_${location.state.playerId}_${quizId}`;
         sessionStorage.removeItem(participantKey);
 
-        // Emit socket event to notify others
-        socket.emit("leaveQuizRoom", {
-          pin: gamePin,
-          playerId: location.state.playerId,
-        });
+        // First update the local state
+        setPlayers((prevPlayers) =>
+          prevPlayers.filter((player) => player._id !== location.state.playerId)
+        );
+        setPlayerCount((prevCount) => Math.max(0, prevCount - 1));
 
-        // Update player status in database
-        await api.post(`/players/${location.state.playerId}/leave`);
+        // Emit socket event to notify others
+        if (socket?.connected) {
+          socket.emit("leaveQuizRoom", {
+            pin: gamePin,
+            playerId: location.state.playerId,
+          });
+        }
+
+        try {
+          // Update player status in database
+          await api.post(`/players/${location.state.playerId}/leave`);
+        } catch (error) {
+          console.error("Error updating player status:", error);
+        }
 
         // Disconnect socket
-        socket.disconnect();
+        if (socket?.connected) {
+          socket.disconnect();
+        }
+
+        // Clear session storage
+        sessionStorage.removeItem(`quiz_session_${quizId}`);
 
         // Navigate back to home
-        navigate("/");
+        navigate("/", { replace: true });
       }
     } catch (error) {
       console.error("Error leaving quiz:", error);
       // Still try to navigate away even if there's an error
-      navigate("/");
+      navigate("/", { replace: true });
     }
   };
 
@@ -426,13 +443,17 @@ const WaitingRoom = () => {
     if (!isHost && !quizLive) {
       const pollInterval = setInterval(async () => {
         try {
-          // Poll API to check if quiz is active
           const response = await api.get(`/quiz/${quizId}/status`);
 
-          // IMPORTANT: Also check quizStarted flag, not just isLive
-          if (response.data.isLive && response.data.quizStarted) {
+          // More strict checking of quiz status
+          if (
+            response.data.isLive &&
+            response.data.quizStarted &&
+            response.data.sessionActive &&
+            response.data.startedAt
+          ) {
             console.log(
-              "Poll detected quiz is live and started, redirecting..."
+              "Poll detected quiz is officially started, redirecting..."
             );
             navigate(`/live/${quizId}`, {
               state: {
@@ -448,11 +469,11 @@ const WaitingRoom = () => {
         } catch (error) {
           console.error("Error polling quiz status:", error);
         }
-      }, 2000); // Check every 2 seconds
+      }, 2000);
 
       return () => clearInterval(pollInterval);
     }
-  }, [isHost, quizId, quizLive, navigate]);
+  }, [isHost, quizId, quizLive, navigate, gamePin, location.state, sessionId]);
 
   return (
     <div className="waiting-room">

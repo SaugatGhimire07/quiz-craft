@@ -23,59 +23,50 @@ export const SocketProvider = ({ children }) => {
   useEffect(() => {
     console.log("Initializing socket connection");
 
+    // Create socket instance with more explicit options
     const socketInstance = io("http://localhost:5001", {
       withCredentials: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       autoConnect: true,
-      transports: ["websocket", "polling"], // Explicitly try both transport methods
+      transports: ["websocket"], // Try websocket first
+      timeout: 10000, // Increase timeout
     });
 
-    setSocket(socketInstance);
-
-    // Connection event handlers
+    // Add connection event handlers with more detailed logging
     const onConnect = () => {
-      console.log("Connected to quiz server, socket ID:", socketInstance.id);
+      console.log("Socket connected successfully with ID:", socketInstance.id);
       setIsConnected(true);
     };
 
     const onDisconnect = (reason) => {
-      console.log("Disconnected from server:", reason);
+      console.log("Socket disconnected, reason:", reason);
       setIsConnected(false);
     };
 
-    const onError = (error) => {
-      console.error("Socket error:", error);
-    };
-
     const onConnectError = (error) => {
-      console.error("Connection error:", error);
+      console.error("Socket connection error:", error);
+      // Try to reconnect with polling if websocket fails
+      if (socketInstance.io.opts.transports[0] === "websocket") {
+        console.log("Retrying with polling transport");
+        socketInstance.io.opts.transports = ["polling", "websocket"];
+      }
     };
 
-    // Add event listeners
     socketInstance.on("connect", onConnect);
     socketInstance.on("disconnect", onDisconnect);
-    socketInstance.on("error", onError);
     socketInstance.on("connect_error", onConnectError);
 
-    // Log when the connection is made
-    socketInstance.on("connect", () => {
-      console.log("Socket connected with ID:", socketInstance.id);
-    });
+    setSocket(socketInstance);
 
-    // Add better reconnection handling
-    socketInstance.on("reconnect", (attemptNumber) => {
-      console.log(`Socket reconnected after ${attemptNumber} attempts`);
-    });
-
-    // Clean up
     return () => {
-      console.log("Cleaning up socket connection");
-      socketInstance.off("connect", onConnect);
-      socketInstance.off("disconnect", onDisconnect);
-      socketInstance.off("error", onError);
-      socketInstance.off("connect_error", onConnectError);
-      socketInstance.disconnect();
+      if (socketInstance) {
+        console.log("Cleaning up socket connection");
+        socketInstance.off("connect", onConnect);
+        socketInstance.off("disconnect", onDisconnect);
+        socketInstance.off("connect_error", onConnectError);
+        socketInstance.disconnect();
+      }
     };
   }, []);
 

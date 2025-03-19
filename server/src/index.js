@@ -28,9 +28,10 @@ const httpServer = createServer(app);
 // Socket.io setup with CORS
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:5173", // Your React frontend URL
+    origin: "http://localhost:5173", // Make sure this matches your client URL
     methods: ["GET", "POST"],
     credentials: true,
+    allowedHeaders: ["Content-Type"],
   },
 });
 
@@ -258,22 +259,26 @@ io.on("connection", (socket) => {
   socket.on("leaveQuizRoom", async ({ pin, playerId }) => {
     try {
       if (playerId) {
+        // Update player status in database
         await Player.findByIdAndUpdate(playerId, {
           isConnected: false,
           socketId: null,
         });
 
+        // Leave the socket room
         socket.leave(pin);
+
+        // Remove from connected users map
         connectedUsers.delete(socket.id);
 
+        // Broadcast to all other clients in the room that this player left
         io.to(pin).emit("playerLeft", { playerId });
 
-        const room = io.sockets.adapter.rooms.get(pin);
-        const playerCount = room ? room.size : 0;
-        io.to(pin).emit("playerCount", { count: playerCount });
+        // Log the event
+        console.log(`Player ${playerId} left room ${pin}`);
       }
     } catch (error) {
-      console.error("Error leaving quiz room:", error);
+      console.error("Error handling leaveQuizRoom:", error);
     }
   });
 });

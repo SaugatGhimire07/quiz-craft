@@ -52,32 +52,20 @@ export const getSessionParticipants = async (req, res) => {
     const { pin } = req.params;
     console.log(`Fetching participants for session with pin: ${pin}`);
 
-    // Try finding by both status and isActive to cover all cases
+    // Modify the session query to only find truly active sessions
     let session = await QuizSession.findOne({
       pin,
-      $or: [
-        { status: "active" },
-        { isActive: true, status: { $ne: "completed" } },
-      ],
+      isActive: true,
+      status: "active",
+      startedAt: { $ne: null }, // Only get sessions that have been officially started
     });
 
+    // If no active session, just find any session without activating it
     if (!session) {
       console.log(
         `No active session found for pin ${pin}, looking for any session`
       );
       session = await QuizSession.findOne({ pin });
-
-      if (session) {
-        console.log(
-          `Found inactive session with pin ${pin}, updating to active`
-        );
-
-        // If we found a session but it's not active, update it to active
-        session.isActive = true;
-        session.status = "active";
-        session.startedAt = session.startedAt || new Date();
-        await session.save();
-      }
     }
 
     if (!session) {
@@ -94,9 +82,10 @@ export const getSessionParticipants = async (req, res) => {
     // Find participants without filtering by isConnected
     const participants = await Player.find({
       sessionId: session._id,
-      isHost: { $ne: true }, // Still exclude hosts
+      isHost: { $ne: true },
+      isConnected: true, // Only get connected players
     })
-      .select("_id name avatarSeed userId isHost")
+      .select("_id name avatarSeed userId isHost isConnected")
       .populate("userId", "_id name");
 
     console.log(`Found ${participants.length} participants in database`);
@@ -121,5 +110,33 @@ export const getSessionParticipants = async (req, res) => {
       message: "Error fetching participants",
       error: error.message,
     });
+  }
+};
+
+// Add this new controller function
+export const updatePlayerStatus = async (req, res) => {
+  try {
+    const { playerId } = req.params;
+    console.log(`Updating status for player ${playerId}`);
+
+    const updatedPlayer = await Player.findByIdAndUpdate(
+      playerId,
+      {
+        isConnected: false,
+        socketId: null,
+      },
+      { new: true }
+    );
+
+    if (!updatedPlayer) {
+      console.log(`Player ${playerId} not found`);
+      return res.status(404).json({ message: "Player not found" });
+    }
+
+    console.log(`Successfully updated player ${playerId} status`);
+    res.json({ message: "Player status updated successfully" });
+  } catch (error) {
+    console.error("Error updating player status:", error);
+    res.status(500).json({ message: "Error updating player status" });
   }
 };
