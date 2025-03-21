@@ -12,6 +12,10 @@ const playerScoreSchema = new mongoose.Schema(
       ref: "Player",
       required: true,
     },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
     sessionId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "QuizSession",
@@ -24,6 +28,9 @@ const playerScoreSchema = new mongoose.Schema(
         isCorrect: Boolean,
         timeTaken: Number,
         score: Number,
+        questionText: String,
+        correctOption: String,
+        options: [String],
       },
     ],
     totalScore: {
@@ -34,6 +41,8 @@ const playerScoreSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    rank: Number,
+    timeTaken: Number, // Total time taken to complete the quiz
   },
   { timestamps: true }
 );

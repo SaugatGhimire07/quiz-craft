@@ -2,7 +2,11 @@ import { useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
 import "../styles/sidebarnav.css";
 
-const SidebarNav = ({ active = "dashboard", showBackButton = true, isAdmin = false }) => {
+const SidebarNav = ({
+  active = "dashboard",
+  showBackButton = true,
+  isAdmin = false,
+}) => {
   const navigate = useNavigate();
 
   return (
@@ -35,7 +39,9 @@ const SidebarNav = ({ active = "dashboard", showBackButton = true, isAdmin = fal
           <h3 className="sidebar-heading">Dashboard</h3>
           <ul className="sidebar-menu">
             <li
-              className={`sidebar-menu-item ${active === "dashboard" ? "active" : ""}`}
+              className={`sidebar-menu-item ${
+                active === "dashboard" ? "active" : ""
+              }`}
               onClick={() => navigate("/dashboard")}
             >
               <svg
@@ -55,7 +61,9 @@ const SidebarNav = ({ active = "dashboard", showBackButton = true, isAdmin = fal
               Home
             </li>
             <li
-              className={`sidebar-menu-item ${active === "discover" ? "active" : ""}`}
+              className={`sidebar-menu-item ${
+                active === "discover" ? "active" : ""
+              }`}
               onClick={() => navigate("/discover")}
             >
               <svg
@@ -75,7 +83,9 @@ const SidebarNav = ({ active = "dashboard", showBackButton = true, isAdmin = fal
               Discover
             </li>
             <li
-              className={`sidebar-menu-item ${active === "library" ? "active" : ""}`}
+              className={`sidebar-menu-item ${
+                active === "library" ? "active" : ""
+              }`}
               onClick={() => navigate("/library")}
             >
               <svg
@@ -95,7 +105,9 @@ const SidebarNav = ({ active = "dashboard", showBackButton = true, isAdmin = fal
               Library
             </li>
             <li
-              className={`sidebar-menu-item ${active === "reports" ? "active" : ""}`}
+              className={`sidebar-menu-item ${
+                active === "reports" ? "active" : ""
+              }`}
               onClick={() => navigate("/reports")}
             >
               <svg
@@ -123,7 +135,9 @@ const SidebarNav = ({ active = "dashboard", showBackButton = true, isAdmin = fal
           <h3 className="sidebar-heading">Admin Dashboard</h3>
           <ul className="sidebar-menu">
             <li
-              className={`sidebar-menu-item ${active === "admin-home" ? "active" : ""}`}
+              className={`sidebar-menu-item ${
+                active === "admin-home" ? "active" : ""
+              }`}
               onClick={() => navigate("/dashboard")}
             >
               <svg
@@ -143,7 +157,9 @@ const SidebarNav = ({ active = "dashboard", showBackButton = true, isAdmin = fal
               Dashboard
             </li>
             <li
-              className={`sidebar-menu-item ${active === "admin-organization" ? "active" : ""}`}
+              className={`sidebar-menu-item ${
+                active === "admin-organization" ? "active" : ""
+              }`}
               onClick={() => navigate("/adminorganization")}
             >
               <svg
@@ -165,7 +181,9 @@ const SidebarNav = ({ active = "dashboard", showBackButton = true, isAdmin = fal
               Organization
             </li>
             <li
-              className={`sidebar-menu-item ${active === "quiz-management" ? "active" : ""}`}
+              className={`sidebar-menu-item ${
+                active === "quiz-management" ? "active" : ""
+              }`}
               onClick={() => navigate("/dashboard/quiz-management")}
             >
               <svg

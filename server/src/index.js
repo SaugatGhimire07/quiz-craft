@@ -274,6 +274,9 @@ io.on("connection", (socket) => {
       isCorrect,
       timeTaken,
       score,
+      questionText, // New fields passed from client
+      correctOption,
+      options,
     }) => {
       try {
         console.log(
@@ -316,13 +319,16 @@ io.on("connection", (socket) => {
           });
         }
 
-        // Process the answer as before
+        // Process the answer with enhanced fields
         playerScore.answers.push({
           questionId,
           answer,
           isCorrect,
           timeTaken,
           score: isCorrect ? score || 0 : 0,
+          questionText,
+          correctOption,
+          options,
         });
 
         if (isCorrect && score) {
@@ -348,7 +354,7 @@ io.on("connection", (socket) => {
   // Add this new socket event handler
   socket.on(
     "quizComplete",
-    async ({ quizId, sessionId, playerId, totalScore }) => {
+    async ({ quizId, sessionId, playerId, stableId, totalScore }) => {
       try {
         console.log(
           `Player ${playerId} completed quiz ${quizId} with score ${totalScore}`
@@ -364,23 +370,60 @@ io.on("connection", (socket) => {
           return;
         }
 
-        // Update or create player score with completed flag
-        const playerScore = await PlayerScore.findOneAndUpdate(
+        // Calculate total time taken by adding up individual question times
+        const playerScore = await PlayerScore.findOne({
+          playerId,
+          sessionId: session._id,
+        });
+
+        // Calculate total time taken from answer times
+        const totalTimeTaken = playerScore?.answers.reduce(
+          (sum, answer) => sum + (answer.timeTaken || 0),
+          0
+        );
+
+        console.log(`Total time taken: ${totalTimeTaken} seconds`);
+
+        // Update or create player score with completed flag and time taken
+        const updatedPlayerScore = await PlayerScore.findOneAndUpdate(
           {
             playerId,
-            quizId,
             sessionId: session._id,
           },
           {
             $set: {
               completed: true,
               totalScore: totalScore || 0,
+              timeTaken: totalTimeTaken, // Save the total time taken
             },
           },
           { upsert: true, new: true }
         );
 
         console.log(`Marked player ${playerId} as completed`);
+
+        // Calculate rank after all scores are saved
+        const allScores = await PlayerScore.find({
+          sessionId: session._id,
+          completed: true,
+        }).sort({ totalScore: -1 });
+
+        // Find this player's rank
+        let playerRank = 0;
+        for (let i = 0; i < allScores.length; i++) {
+          if (allScores[i].playerId.toString() === playerId.toString()) {
+            playerRank = i + 1;
+            break;
+          }
+        }
+
+        // Update the player's rank in the database
+        if (playerRank > 0) {
+          await PlayerScore.findByIdAndUpdate(updatedPlayerScore._id, {
+            $set: { rank: playerRank },
+          });
+          console.log(`Updated player ${playerId} rank to ${playerRank}`);
+        }
 
         // Get count of completed players vs total players
         const totalPlayers = session.players.length;
@@ -399,6 +442,11 @@ io.on("connection", (socket) => {
             `All players (${completedCount}/${totalPlayers}) have completed the quiz! Showing results to everyone`
           );
 
+          // Update session as all completed
+          await QuizSession.findByIdAndUpdate(session._id, {
+            $set: { allCompleted: true },
+          });
+
           // Broadcast to the room
           io.to(session.pin).emit("showResults", {
             quizId,
@@ -406,15 +454,18 @@ io.on("connection", (socket) => {
             allParticipantsFinished: true,
           });
 
-          // Also emit a specific event for when all are finished
+          // Also emit separate event as a backup
           io.to(session.pin).emit("allParticipantsFinished", {
             quizId,
             sessionId: session._id,
           });
-
-          // Update session status
-          await QuizSession.findByIdAndUpdate(session._id, {
-            $set: { allCompleted: true },
+        } else {
+          // This participant is done, but still waiting for others
+          // Send a personal showResults event just to this participant
+          socket.emit("showResults", {
+            quizId,
+            sessionId: session._id,
+            allParticipantsFinished: false,
           });
         }
       } catch (error) {
@@ -486,7 +537,8 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
 
-const mongoURI = process.env.MONGODB_URI || "mongodb://localhost:27017/quizcraft";
+const mongoURI =
+  process.env.MONGODB_URI || "mongodb://localhost:27017/quizcraft";
 
 // Routes
 app.use("/api/quiz", quizRoutes);

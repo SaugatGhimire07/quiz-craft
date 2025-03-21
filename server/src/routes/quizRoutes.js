@@ -18,6 +18,8 @@ import {
   getQuizForParticipant,
   getQuizResults,
   getSessionStatus,
+  getUserQuizHistory,
+  getUserQuizResults,
 } from "../controllers/quizController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 
@@ -48,5 +50,10 @@ router.get("/:quizId/session-status", getSessionStatus);
 
 // For hosts (auth required)
 router.get("/:quizId/session/host", protect, getOrCreateQuizSession);
+
+// User history routes (auth required)
+router.get("/user/history", protect, getUserQuizHistory);
+
+router.get("/:quizId/user-results", protect, getUserQuizResults);
 
 export default router;
