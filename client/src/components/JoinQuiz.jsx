@@ -9,11 +9,10 @@ const JoinQuiz = () => {
   // Get socket, isConnected and emitEvent from the context
   const { socket, isConnected, emitEvent } = useSocket();
   const [gamePin, setGamePin] = useState("");
-  const [guestName, setGuestName] = useState("");
   const [error, setError] = useState("");
-  const [showNameOverlay, setShowNameOverlay] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAuthenticated, refreshAuthToken } = useAuth(); // Get isAuthenticated flag
 
   useEffect(() => {
     // Only set up listeners if socket is available
@@ -53,44 +52,85 @@ const JoinQuiz = () => {
     };
   }, [socket]); // Only re-run when socket changes
 
+  // Add this effect to ensure auth state is current
+  useEffect(() => {
+    // Try to refresh auth state when component mounts
+    refreshAuthToken?.();
+  }, [refreshAuthToken]);
+
   const handleJoinQuiz = async (playerName) => {
     try {
-      // First join via the API
-      const response = await api.post("/quiz/join", {
-        pin: gamePin.trim(),
-        playerName: playerName,
-        userId: user?._id,
-      });
+      setSubmitting(true);
 
-      // Then emit socket event if connected
-      if (socket && isConnected) {
-        emitEvent("joinQuizRoom", {
-          pin: gamePin.trim(),
-          playerName: playerName,
-          playerId: response.data.player.id,
-          isHost: false,
-          userId: user?._id,
+      // Check if user is logged in
+      if (!user || !user._id) {
+        console.log("No valid user found, redirecting to login");
+        // Redirect to login with return URL
+        navigate("/login", {
+          state: {
+            returnTo: "/join",
+            gamePin: gamePin.trim(),
+          },
         });
-      } else {
-        console.warn(
-          "Socket not connected - will rely only on API for joining"
-        );
+        return;
       }
 
-      // Navigate to waiting room
-      navigate(`/waiting-room/${response.data.quizId}`, {
-        state: {
-          sessionId: response.data.sessionId,
-          playerId: response.data.player.id,
-          playerName: playerName,
-          gamePin: gamePin.trim(),
-        },
+      console.log(`Joining quiz as ${playerName} with user ID: ${user._id}`);
+
+      // Make sure userId is a string in the expected format
+      const userId = user._id.toString();
+
+      const response = await api.post("/quiz/join", {
+        pin: gamePin.trim(),
+        playerName,
+        userId: userId, // Ensure userId is passed correctly
       });
+
+      if (response.data) {
+        console.log("Successfully joined quiz:", response.data);
+
+        // Then emit socket event if connected
+        if (socket && isConnected) {
+          emitEvent("joinQuizRoom", {
+            pin: gamePin.trim(),
+            playerName: playerName,
+            playerId: response.data.player.id,
+            isHost: false,
+            userId: userId,
+          });
+        }
+
+        // Navigate to waiting room
+        navigate(`/waiting-room/${response.data.quizId}`, {
+          state: {
+            sessionId: response.data.sessionId,
+            playerId: response.data.player.id,
+            playerName: playerName,
+            gamePin: gamePin.trim(),
+            userId: userId,
+          },
+        });
+      }
     } catch (error) {
-      setError(
-        error.response?.data?.message ||
-          "Failed to join quiz. Please check the PIN and try again."
-      );
+      console.error("Failed to join quiz:", error);
+
+      // Add more specific error message based on the error response
+      let errorMessage =
+        "Failed to join quiz. Please check the PIN and try again.";
+
+      if (
+        error.response?.data?.error ===
+        "userId is required - all participants must be logged in"
+      ) {
+        errorMessage =
+          "You must be logged in to join a quiz. Please log in and try again.";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      setError(errorMessage);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -102,21 +142,37 @@ const JoinQuiz = () => {
 
     setError(""); // Clear previous errors
 
-    if (user) {
-      // For logged-in users, use their profile name
-      handleJoinQuiz(user.name);
-    } else {
-      // For guests, show the name overlay
-      setShowNameOverlay(true);
-    }
-  };
+    // More detailed logging
+    console.log("Auth state check:", {
+      userExists: !!user,
+      userId: user?._id,
+      isAuthenticated: isAuthenticated,
+      authToken: !!localStorage.getItem("token"),
+    });
 
-  const handleGuestJoin = () => {
-    if (!guestName.trim()) {
-      setError("Please enter your name");
-      return;
+    // More robust check that includes both user object and our derived isAuthenticated flag
+    if (user?._id && isAuthenticated) {
+      // Use optional chaining for safer access
+      handleJoinQuiz(user.name || "Anonymous");
+    } else {
+      // Before redirecting, check if there's actually a token but we failed to parse the user
+      const hasToken = !!localStorage.getItem("token");
+      if (hasToken) {
+        setError(
+          "Session issue detected. Please refresh the page and try again."
+        );
+        // Could add an auto-refresh here
+        return;
+      }
+
+      // Redirect to login if not authenticated
+      navigate("/login", {
+        state: {
+          returnTo: "/join",
+          gamePin: gamePin.trim(),
+        },
+      });
     }
-    handleJoinQuiz(guestName);
   };
 
   return (
@@ -139,32 +195,6 @@ const JoinQuiz = () => {
       >
         Join
       </button>
-
-      {showNameOverlay && (
-        <div className="name-overlay">
-          <div className="name-container">
-            <h3>Enter Your Name</h3>
-            <input
-              type="text"
-              placeholder="Your Name"
-              value={guestName}
-              onChange={(e) => setGuestName(e.target.value)}
-              className="name-input"
-            />
-            <div className="button-group">
-              <button
-                onClick={() => setShowNameOverlay(false)}
-                className="cancel-button"
-              >
-                Cancel
-              </button>
-              <button onClick={handleGuestJoin} className="join-button">
-                Join
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

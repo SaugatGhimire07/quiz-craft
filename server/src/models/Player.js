@@ -9,16 +9,11 @@ const playerSchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      // Not required - anonymous players are allowed
+      required: true, // Now required since all participants must be logged in
     },
-    // A unique identifier for anonymous players (e.g., browser fingerprint)
-    anonymousId: {
-      type: String,
-    },
-    // Store a stable identifier that persists across sessions
+    // Store userId as stable identifier for consistency
     stableId: {
       type: String,
-      // This will be either userId or anonymousId, set via pre-save hook
     },
     sessionId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -55,31 +50,40 @@ const playerSchema = new mongoose.Schema(
 
 // Pre-save hook to set the stableId
 playerSchema.pre("save", function (next) {
-  // Use userId if available, otherwise use anonymousId
-  if (!this.stableId) {
-    this.stableId = this.userId ? this.userId.toString() : this.anonymousId;
+  // Always use userId as the stableId
+  if (!this.stableId && this.userId) {
+    this.stableId = this.userId.toString();
   }
   next();
 });
 
-// Add a method to find or create player
+// Updated findOrCreate method that requires userId
 playerSchema.statics.findOrCreate = async function (playerData) {
-  // Determine which stable ID to use
-  const stableId = playerData.userId || playerData.anonymousId;
-
-  if (!stableId) {
-    throw new Error("Either userId or anonymousId must be provided");
+  // Ensure userId is provided
+  if (!playerData.userId) {
+    throw new Error("userId is required - all participants must be logged in");
   }
 
-  // Try to find an existing player for this session
+  console.log("findOrCreate called with data:", {
+    name: playerData.name,
+    userId: playerData.userId,
+    sessionId: playerData.sessionId,
+  });
+
+  // Set stableId to userId
+  const stableId = playerData.userId.toString();
+  console.log(`Using userId ${stableId} as stableId for player`);
+
+  // Find player by userId
   let player = await this.findOne({
-    stableId,
+    userId: playerData.userId,
     quizId: playerData.quizId,
     sessionId: playerData.sessionId,
   });
 
-  // If player exists, update their connection status
   if (player) {
+    console.log(`Found existing player by userId: ${player._id}`);
+    // Update connection status
     player.isConnected = true;
     player.socketId = playerData.socketId;
     player.lastActive = Date.now();
@@ -87,11 +91,10 @@ playerSchema.statics.findOrCreate = async function (playerData) {
     return player;
   }
 
-  // Otherwise create a new player
-  player = new this({
+  // Create new player
+  const newPlayerData = {
     name: playerData.name,
     userId: playerData.userId,
-    anonymousId: playerData.anonymousId,
     quizId: playerData.quizId,
     sessionId: playerData.sessionId,
     avatarSeed: playerData.avatarSeed,
@@ -99,8 +102,16 @@ playerSchema.statics.findOrCreate = async function (playerData) {
     role: playerData.role || "participant",
     socketId: playerData.socketId,
     isConnected: true,
+    stableId: stableId,
+  };
+
+  console.log("Creating new player with:", {
+    name: newPlayerData.name,
+    userId: newPlayerData.userId,
+    stableId: newPlayerData.stableId,
   });
 
+  player = new this(newPlayerData);
   await player.save();
   return player;
 };

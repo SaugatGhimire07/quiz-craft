@@ -227,18 +227,19 @@ export const useParticipants = (
   useEffect(() => {
     if (!socket) return;
 
+    // This function is receiving {playerId, playerName, stableId} but looking for {id, name}
     const handleParticipantJoined = (participant) => {
       console.log("Participant joined:", participant);
 
-      // Safety check - if necessary data is missing, don't add the participant
-      if (!participant || (!participant.id && !participant.name)) {
+      // Update to check for playerId instead of id
+      if (!participant || (!participant.playerId && !participant.playerName)) {
         console.error("Received invalid participant data:", participant);
         return;
       }
 
       // Use fallback values if data is missing
-      const participantId = participant.id || `anon-${Date.now()}`;
-      const participantName = participant.name || "Anonymous Player";
+      const participantId = participant.playerId || `anon-${Date.now()}`;
+      const participantName = participant.playerName || "Anonymous Player";
       const avatarSeed =
         participant.avatarSeed ||
         participantName.toLowerCase().replace(/[^a-z0-9]/g, "");

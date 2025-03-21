@@ -757,109 +757,62 @@ export const getQuizResults = async (req, res) => {
 
     console.log(`Getting results for quiz ${quizId}, session ${sessionId}`);
 
-    // Find the session
-    const session = await QuizSession.findOne({
-      $or: [{ _id: sessionId }, { quizId, isActive: true }],
-    });
+    if (!sessionId) {
+      return res.status(400).json({ message: "sessionId is required" });
+    }
+
+    // Find the session with exact match on sessionId
+    const session = await QuizSession.findById(sessionId);
 
     if (!session) {
-      console.log(
-        `No session found for quiz ${quizId} with sessionId ${sessionId}`
-      );
-      return res.status(404).json({ message: "Quiz session not found" });
+      console.log(`Session not found with ID: ${sessionId}`);
+      return res.status(404).json({ message: "Session not found" });
     }
 
     console.log(`Found session: ${session._id}`);
 
-    // Get all player scores for this session
+    // Get ONLY player scores for THIS SESSION specifically
     const playerScores = await PlayerScore.find({
-      quizId,
       sessionId: session._id,
     }).populate("playerId", "name");
 
-    console.log(`Found ${playerScores.length} player scores`);
+    // Log unique player IDs to identify duplicates
+    const uniquePlayerIds = [
+      ...new Set(playerScores.map((score) => score.playerId)),
+    ];
+    console.log(
+      `Found ${playerScores.length} scores from ${uniquePlayerIds.length} unique players`
+    );
 
-    // Debug information for each player score
-    playerScores.forEach((score) => {
-      console.log(
-        `Player ${score.playerId?.name || "Unknown"}: Score ${
-          score.totalScore
-        }, Completed: ${score.completed}, Answers: ${score.answers.length}`
-      );
-      score.answers.forEach((ans, idx) => {
-        console.log(
-          `  Answer ${idx + 1}: Correct: ${ans.isCorrect}, Points: ${
-            ans.score || 0
-          }`
-        );
-      });
-    });
+    // Format scores, ensuring uniqueness by player ID
+    const playerMap = new Map(); // Use map to ensure one entry per player
 
-    // If no scores yet, try to get total questions count for the quiz
-    const quiz = await Quiz.findById(quizId);
-    const totalQuestions = quiz?.questions?.length || 0;
-
-    // Get all players for this session
-    const players = await Player.find({
-      sessionId: session._id,
-      isHost: { $ne: true }, // Exclude the host
-    });
-
-    console.log(`Found ${players.length} players in this session`);
-
-    // Format scores for the leaderboard
-    const results = [];
-
-    // Add players with scores
+    // Process all scores, keeping only the highest score per player
     for (const score of playerScores) {
-      // Count correct answers
-      const correctAnswers = score.answers.filter(
-        (answer) => answer.isCorrect
-      ).length;
+      const playerId =
+        score.playerId?._id?.toString() || score.playerId?.toString();
+      const correctAnswers = score.answers.filter((a) => a.isCorrect).length;
+      const totalScore = score.totalScore || 0;
 
-      // Recalculate total score if it's showing as 0 but there are correct answers
-      let finalScore = score.totalScore || 0;
-      if (finalScore === 0 && correctAnswers > 0) {
-        finalScore = score.answers.reduce(
-          (sum, a) => sum + (a.isCorrect ? a.score || 0 : 0),
-          0
-        );
-        console.log(
-          `Recalculated score for ${score.playerId?.name}: ${finalScore}`
-        );
-      }
-
-      results.push({
-        playerId: score.playerId?._id || score.playerId,
-        playerName: score.playerId?.name || "Anonymous",
-        score: finalScore,
-        correctAnswers,
-        totalQuestions,
-      });
-    }
-
-    // Add players without scores (who might not have answered any questions)
-    for (const player of players) {
-      // Check if player is already in results
-      const alreadyInResults = results.some(
-        (result) =>
-          result.playerId &&
-          result.playerId.toString() === player._id.toString()
-      );
-
-      if (!alreadyInResults) {
-        results.push({
-          playerId: player._id,
-          playerName: player.name || "Anonymous",
-          score: 0,
-          correctAnswers: 0,
-          totalQuestions,
+      // Only add or replace if this score is higher than existing entry
+      if (
+        !playerMap.has(playerId) ||
+        playerMap.get(playerId).score < totalScore
+      ) {
+        playerMap.set(playerId, {
+          playerId,
+          playerName: score.playerId?.name || "Anonymous",
+          score: totalScore,
+          correctAnswers,
+          totalQuestions: session.quiz?.questions?.length || 3,
         });
       }
     }
 
-    // Sort by score (highest first)
-    results.sort((a, b) => b.score - a.score);
+    // Convert map to array and sort by score
+    const results = Array.from(playerMap.values()).sort(
+      (a, b) => b.score - a.score
+    );
 
     console.log("Sending results:", results);
     res.json(results);
@@ -876,54 +829,51 @@ export const getSessionStatus = async (req, res) => {
     const { quizId } = req.params;
     const { sessionId } = req.query;
 
-    console.log(
-      `Checking session status for quiz ${quizId}, session ${sessionId}`
-    );
+    if (!sessionId) {
+      return res.status(400).json({ message: "sessionId is required" });
+    }
 
-    // Find the session
-    const session = await QuizSession.findOne({
-      $or: [{ _id: sessionId }, { quizId, isActive: true }],
-    });
+    // Find the exact session by ID
+    const session = await QuizSession.findById(sessionId);
 
     if (!session) {
       return res.status(404).json({ message: "Session not found" });
     }
 
-    // Get player count from Player collection - EXCLUDING HOSTS
-    const totalPlayers = await Player.countDocuments({
+    // Get ACTUAL players in THIS session
+    const players = await Player.find({
       sessionId: session._id,
       isHost: { $ne: true }, // Exclude hosts
-      role: { $ne: "host" }, // Also check role field
+      role: { $ne: "host" },
     });
 
-    // Get completed count from PlayerScore collection
-    const completedCount = await PlayerScore.countDocuments({
+    const uniquePlayerIds = [...new Set(players.map((p) => p._id.toString()))];
+    const totalPlayers = uniquePlayerIds.length;
+
+    // Count ONLY completed scores for THIS session
+    const completedScores = await PlayerScore.find({
       sessionId: session._id,
       completed: true,
     });
+
+    // Count unique completed players
+    const uniqueCompletedPlayerIds = [
+      ...new Set(completedScores.map((s) => s.playerId.toString())),
+    ];
+    const completedCount = uniqueCompletedPlayerIds.length;
 
     console.log(
       `Session status: ${completedCount} of ${totalPlayers} players completed`
     );
 
-    // STRICT EQUALITY CHECK - only complete when ALL players have finished
-    const isComplete = totalPlayers > 0 && completedCount === totalPlayers;
-
-    // If all players have completed, update the session
-    if (isComplete && !session.allCompleted) {
-      await QuizSession.findByIdAndUpdate(session._id, {
-        $set: { allCompleted: true },
-      });
-      console.log(
-        `All ${totalPlayers} players have completed. Marking session as complete.`
-      );
-    }
+    // FIXED: now completedCount will never be more than totalPlayers
+    const isComplete = totalPlayers > 0 && completedCount >= totalPlayers;
 
     res.json({
       quizId,
       sessionId: session._id,
       totalPlayers,
-      completedCount,
+      completedCount: Math.min(completedCount, totalPlayers), // Prevent count exceeding total
       allCompleted: isComplete || session.allCompleted,
       pin: session.pin,
     });

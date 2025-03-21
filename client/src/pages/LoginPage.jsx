@@ -29,15 +29,22 @@ const LoginPage = () => {
 
       if (response.data.token) {
         localStorage.setItem("token", response.data.token);
-        // Use the login function from auth context instead
+
         login({
-          id: response.data._id,
+          _id: response.data._id,
           name: response.data.name,
           email: response.data.email,
           isVerified: response.data.isVerified,
         });
 
-        navigate("/dashboard");
+        // Check for redirect from previous navigation attempt
+        if (location.state?.returnTo) {
+          navigate(location.state.returnTo, {
+            state: location.state,
+          });
+        } else {
+          navigate("/dashboard");
+        }
       }
     } catch (error) {
       if (error.response?.status === 403) {
