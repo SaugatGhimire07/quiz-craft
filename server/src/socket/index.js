@@ -69,6 +69,28 @@ io.on("connection", (socket) => {
     }
   });
 
+  // This would be in your server-side socket.io code
+  socket.on("quizComplete", async ({ quizId, sessionId, playerId }) => {
+    try {
+      // Record this player as completed
+      // ...your logic to record player completion...
+
+      // Check if all players have completed
+      const session = await QuizSession.findById(sessionId);
+      const completedPlayers = await PlayerScore.countDocuments({
+        sessionId,
+        completed: true,
+      });
+
+      if (session && completedPlayers >= session.players.length) {
+        // All players have completed, emit the showResults event
+        io.to(session.pin).emit("showResults", { quizId, sessionId });
+      }
+    } catch (error) {
+      console.error("Error handling quiz completion:", error);
+    }
+  });
+
   // Clean up on disconnect
   socket.on("disconnect", () => {
     const userData = connectedUsers.get(socket.id);

@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 import { useAuth } from "../hooks/useAuth";
 import LogoOnly from "../assets/logo/logo-only.png";
 import BackgroundTheme from "../components/BackgroundTheme";
+import LeaderboardResults from "../components/LeaderboardResults";
+import WaitingForResults from "../components/WaitingForResults";
 import api from "../api/axios";
 import "../styles/liveQuiz.css";
 
@@ -19,6 +21,26 @@ const LiveQuiz = () => {
   const [isCorrect, setIsCorrect] = useState(null);
   const [timer, setTimer] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [score, setScore] = useState(0);
+  const [questionStartTime, setQuestionStartTime] = useState(null);
+  const [quizComplete, setQuizComplete] = useState(false);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [totalQuestions, setTotalQuestions] = useState(0);
+  const [liveLeaderboard, setLiveLeaderboard] = useState([]);
+  const [allParticipantsFinished, setAllParticipantsFinished] = useState(false);
+
+  // When the component mounts, explicitly reset these values
+  useEffect(() => {
+    // Reset quiz state when component mounts
+    setSelectedQuestionIndex(0);
+    setQuizComplete(false);
+    setScore(0);
+
+    return () => {
+      // Cleanup on unmount
+      console.log("LiveQuiz component unmounting");
+    };
+  }, []);
 
   useEffect(() => {
     // Check if coming from waiting room with a valid state
@@ -237,46 +259,331 @@ const LiveQuiz = () => {
     };
   }, [socket, quizId, location.state, user]);
 
+  const fetchLeaderboard = useCallback(
+    async (shouldUpdateUI = true) => {
+      try {
+        console.log(
+          "Fetching leaderboard with sessionId:",
+          location.state?.sessionId
+        );
+
+        if (!location.state?.sessionId) {
+          console.warn("Missing sessionId - cannot fetch leaderboard");
+          return [];
+        }
+
+        const response = await api.get(`/quiz/${quizId}/results`, {
+          params: {
+            sessionId: location.state.sessionId,
+          },
+        });
+
+        console.log("Raw leaderboard data:", response.data);
+
+        if (Array.isArray(response.data) && response.data.length > 0) {
+          console.log(
+            "Valid leaderboard received with",
+            response.data.length,
+            "entries"
+          );
+
+          // Add current player if missing
+          const currentPlayerIncluded = response.data.some(
+            (player) => player.playerId === location.state.playerId
+          );
+
+          if (!currentPlayerIncluded && location.state?.playerName) {
+            console.log("Current player not found in results, adding manually");
+            const playerResults = [...response.data];
+            playerResults.push({
+              playerId: location.state.playerId,
+              playerName: location.state.playerName,
+              score,
+              correctAnswers: score > 0 ? Math.ceil(score / 100) : 0,
+              totalQuestions: questions.length || totalQuestions,
+            });
+            playerResults.sort((a, b) => b.score - a.score);
+
+            if (shouldUpdateUI) {
+              setLeaderboard(playerResults);
+            }
+            return playerResults;
+          } else {
+            if (shouldUpdateUI) {
+              setLeaderboard(response.data);
+            }
+            return response.data;
+          }
+        } else {
+          console.warn("Empty leaderboard data, using fallback");
+          const fallbackData = createFallbackLeaderboard();
+          if (shouldUpdateUI) {
+            setLeaderboard(fallbackData);
+          }
+          return fallbackData;
+        }
+      } catch (error) {
+        console.error("Error fetching leaderboard:", error);
+        const fallbackData = createFallbackLeaderboard();
+        if (shouldUpdateUI) {
+          setLeaderboard(fallbackData);
+        }
+        return fallbackData;
+      }
+    },
+    [quizId, location.state, score, questions.length, totalQuestions]
+  );
+
+  useEffect(() => {
+    if (!socket) return;
+
+    // Add listener for quiz completion
+    const handleShowResults = ({
+      quizId: resultQuizId,
+      sessionId,
+      allParticipantsFinished: allFinished,
+    }) => {
+      // Only set as complete if we have the right quiz ID and we're not already complete
+      if (resultQuizId === quizId) {
+        console.log("Quiz complete event received, showing results");
+        setQuizComplete(true);
+
+        // Set all participants finished flag based on the server response
+        if (allFinished) {
+          console.log(
+            "All participants have finished the quiz, showing leaderboard"
+          );
+          setAllParticipantsFinished(true);
+        }
+
+        // If we already have live leaderboard data, use it
+        if (liveLeaderboard.length > 0) {
+          setLeaderboard(liveLeaderboard);
+        } else {
+          // Otherwise fetch fresh data
+          fetchLeaderboard();
+        }
+      }
+    };
+
+    // Listen for the showResults event from the server
+    socket.on("showResults", handleShowResults);
+
+    // Listen for a special event when all participants have completed
+    socket.on("allParticipantsFinished", () => {
+      console.log("Received allParticipantsFinished event");
+      setAllParticipantsFinished(true);
+    });
+
+    return () => {
+      socket.off("showResults", handleShowResults);
+      socket.off("allParticipantsFinished");
+    };
+  }, [socket, quizId, fetchLeaderboard, liveLeaderboard]);
+
+  // Add this useEffect to properly handle single-participant scenarios
+  useEffect(() => {
+    // If there's only one participant (or we think there is), show results immediately after quiz completion
+    if (
+      quizComplete &&
+      leaderboard.length === 1 &&
+      leaderboard[0].playerId === location.state?.playerId
+    ) {
+      console.log(
+        "Only one participant detected, showing leaderboard immediately"
+      );
+      setAllParticipantsFinished(true);
+    }
+  }, [quizComplete, leaderboard, location.state?.playerId]);
+
+  // Also modify the existing useEffect that polls for results
+  useEffect(() => {
+    // Only poll if quiz is complete but we're still waiting for others
+    if (quizComplete && !allParticipantsFinished) {
+      const pollInterval = setInterval(async () => {
+        try {
+          console.log("Polling for complete results...");
+          const updatedLeaderboard = await fetchLeaderboard();
+
+          // If there's only one player (the current user), consider it finished
+          if (
+            updatedLeaderboard.length === 1 &&
+            updatedLeaderboard[0].playerId === location.state?.playerId
+          ) {
+            console.log("Single participant detected, showing results");
+            setAllParticipantsFinished(true);
+            return;
+          }
+
+          // Rest of the existing code for multiple participants...
+          if (updatedLeaderboard.length > 1) {
+            console.log(
+              "Multiple participants found in results, showing leaderboard"
+            );
+            setAllParticipantsFinished(true);
+          }
+
+          // Check session status via API
+          // ...existing code...
+        } catch (error) {
+          console.error("Error polling for results:", error);
+        }
+      }, 2000);
+
+      return () => clearInterval(pollInterval);
+    }
+  }, [
+    quizComplete,
+    allParticipantsFinished,
+    fetchLeaderboard,
+    quizId,
+    location.state?.sessionId,
+    location.state?.playerId,
+  ]);
+
   useEffect(() => {
     setSelectedOption(null); // Reset selected option when question changes
     setIsCorrect(null); // Reset correctness state when question changes
     if (questions.length > 0) {
       setTimer(questions[selectedQuestionIndex].timer); // Reset timer for new question
+      setQuestionStartTime(Date.now()); // Record when question started
+      setTotalQuestions(questions.length); // Track total number of questions
     }
   }, [selectedQuestionIndex, questions]);
 
   useEffect(() => {
+    // Only run timer logic if questions are loaded
+    if (questions.length === 0) return;
+
+    // Check if we're on the last question and have already answered
+    const isLastQuestion = selectedQuestionIndex === questions.length - 1;
+    const hasAnswered = selectedOption !== null;
+
+    // Don't continue the timer if we're on the last question and have answered
+    if (isLastQuestion && hasAnswered) {
+      return;
+    }
+
     if (timer > 0) {
       const timerId = setTimeout(() => setTimer(timer - 1), 1000);
       return () => clearTimeout(timerId);
-    } else {
+    } else if (timer === 0 && !quizComplete) {
+      // Only advance when timer reaches 0 AND questions are loaded AND quiz isn't complete
+      console.log("Timer reached 0, advancing to next question");
       handleNextQuestion();
     }
-  }, [timer]);
+  }, [
+    timer,
+    questions.length,
+    quizComplete,
+    selectedQuestionIndex,
+    selectedOption,
+  ]);
+
+  // Add this useEffect to monitor important state changes
+  useEffect(() => {
+    console.log("Quiz state updated:", {
+      questionsLoaded: questions.length,
+      currentQuestion: selectedQuestionIndex,
+      timerValue: timer,
+      quizComplete,
+      score,
+    });
+  }, [questions.length, selectedQuestionIndex, timer, quizComplete, score]);
 
   const handleNextQuestion = () => {
+    // Don't proceed if no questions are loaded
+    if (!questions.length) {
+      console.warn("No questions loaded yet. Cannot proceed.");
+      return;
+    }
+
     if (selectedQuestionIndex < questions.length - 1) {
       setSelectedQuestionIndex(selectedQuestionIndex + 1);
     } else {
-      // Quiz completed - restart automatically without showing alert
-      setSelectedQuestionIndex(0);
-      setSelectedOption(null);
-      setIsCorrect(null);
-      if (questions.length > 0) {
-        setTimer(questions[0].timer);
+      // Quiz completed for this participant
+      console.log(
+        "Last question answered, waiting for all participants to finish"
+      );
+
+      // Mark this participant as complete
+      setQuizComplete(true);
+
+      // Notify the server this participant has completed
+      if (socket?.connected && location.state?.playerId) {
+        socket.emit("quizComplete", {
+          quizId,
+          sessionId: location.state?.sessionId,
+          playerId: location.state.playerId,
+          totalScore: score, // Make sure this is included
+        });
+
+        // Get the current leaderboard for this participant
+        if (liveLeaderboard.length > 0) {
+          setLeaderboard(liveLeaderboard);
+        } else {
+          fetchLeaderboard();
+        }
+      } else {
+        // Fallback when socket isn't connected
+        fetchLeaderboard();
       }
     }
   };
 
-  const handlePreviousQuestion = () => {
-    if (selectedQuestionIndex > 0) {
-      setSelectedQuestionIndex(selectedQuestionIndex - 1);
-    }
-  };
-
   const handleOptionSelect = (option) => {
+    const isAnswerCorrect = option === currentQuestion.correctOption;
     setSelectedOption(option);
-    setIsCorrect(option === currentQuestion.correctOption);
+    setIsCorrect(isAnswerCorrect);
+
+    // Calculate score based on correctness and time
+    if (isAnswerCorrect) {
+      const maxTime = currentQuestion.timer;
+      const timeTaken = (Date.now() - questionStartTime) / 1000;
+      const timeBonus = Math.max(0, maxTime - timeTaken);
+      const speedMultiplier = 5; // Points per second saved
+
+      const questionScore = 100 + Math.round(timeBonus * speedMultiplier);
+
+      // Update total score
+      setScore((prevScore) => prevScore + questionScore);
+
+      // Send score to server if connected to socket
+      if (socket?.connected && location.state?.playerId) {
+        socket.emit("submitAnswer", {
+          quizId,
+          questionId: currentQuestion._id,
+          playerId: location.state.playerId,
+          answer: option,
+          isCorrect: true,
+          timeTaken,
+          score: questionScore, // Make sure this is included
+        });
+      }
+    } else {
+      // Wrong answer - no points
+      if (socket?.connected && location.state?.playerId) {
+        socket.emit("submitAnswer", {
+          quizId,
+          questionId: currentQuestion._id,
+          playerId: location.state.playerId,
+          answer: option,
+          isCorrect: false,
+          timeTaken: (Date.now() - questionStartTime) / 1000,
+        });
+      }
+    }
+
+    // Fetch updated leaderboard in the background (don't update UI yet)
+    setTimeout(async () => {
+      try {
+        const updatedLeaderboard = await fetchLeaderboard(false);
+        setLiveLeaderboard(updatedLeaderboard);
+        console.log("Updated live leaderboard:", updatedLeaderboard);
+      } catch (error) {
+        console.error("Failed to update live leaderboard");
+      }
+    }, 500);
 
     // Move to the next question after a short delay
     setTimeout(() => {
@@ -294,173 +601,181 @@ const LiveQuiz = () => {
   return (
     <div>
       <BackgroundTheme />
-      <div className="timer-container">
-        <p className="timer-text">Time left: {timer} seconds</p>
-      </div>
-      <div className="live-quiz-container">
-        <div className="live-quiz-main-content">
-          <div className="live-quiz-main-header">
-            <img
-              src={LogoOnly}
-              alt="Quiz Craft Logo"
-              className="live-quiz-logo"
-            />
-          </div>
-          {currentQuestion && (
-            <div className="live-quiz-question-group">
-              <p className="live-quiz-question-text">
-                {currentQuestion.questionText}
-              </p>
 
-              {currentQuestion.image && (
-                <div className="live-quiz-question-image">
-                  <img src={currentQuestion.image} alt="Question" />
+      {!quizComplete ? (
+        <>
+          <div className="timer-container">
+            <p className="timer-text">Time left: {timer} seconds</p>
+          </div>
+          <div className="live-quiz-container">
+            <div className="live-quiz-main-content">
+              <div className="live-quiz-main-header">
+                <img
+                  src={LogoOnly}
+                  alt="Quiz Craft Logo"
+                  className="live-quiz-logo"
+                />
+              </div>
+              {currentQuestion && (
+                <div className="live-quiz-question-group">
+                  <p className="live-quiz-question-text">
+                    {currentQuestion.questionText}
+                  </p>
+
+                  {currentQuestion.image && (
+                    <div className="live-quiz-question-image">
+                      <img src={currentQuestion.image} alt="Question" />
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-          )}
 
-          <div className="live-quiz-content-spacer"></div>
+              <div className="live-quiz-content-spacer"></div>
 
-          {currentQuestion && currentQuestion.type === "multiple-choice" ? (
-            <div className="live-quiz-options-container multiple-choice">
-              <div className="live-quiz-options-grid">
-                {currentQuestion.options.map((option, optionIndex) => (
-                  <div
-                    key={optionIndex}
-                    className={`live-quiz-option-row ${
-                      selectedOption === option
-                        ? isCorrect
-                          ? "correct"
-                          : "incorrect"
-                        : ""
-                    }`}
-                    onClick={() => handleOptionSelect(option)}
-                  >
-                    <div className="live-quiz-option-input-wrapper">
-                      <input
-                        type="text"
-                        value={option}
-                        placeholder={`Option ${optionIndex + 1}`}
-                        className="live-quiz-option-input"
-                        readOnly
-                      />
-                      {option && (
+              {currentQuestion && currentQuestion.type === "multiple-choice" ? (
+                <div className="live-quiz-options-container multiple-choice">
+                  <div className="live-quiz-options-grid">
+                    {currentQuestion.options.map((option, optionIndex) => (
+                      <div
+                        key={optionIndex}
+                        className={`live-quiz-option-row ${
+                          selectedOption === option
+                            ? isCorrect
+                              ? "correct"
+                              : "incorrect"
+                            : ""
+                        }`}
+                        onClick={() => handleOptionSelect(option)}
+                      >
+                        <div className="live-quiz-option-input-wrapper">
+                          <input
+                            type="text"
+                            value={option}
+                            placeholder={`Option ${optionIndex + 1}`}
+                            className="live-quiz-option-input"
+                            readOnly
+                          />
+                          {option && (
+                            <div
+                              className={`live-quiz-option-radio ${
+                                selectedOption === option ? "selected" : ""
+                              }`}
+                            >
+                              <div className="live-quiz-radio-inner"></div>
+                            </div>
+                          )}
+                          {selectedOption === option && (
+                            <div className="live-quiz-option-icon">
+                              {isCorrect ? (
+                                <span className="correct-icon">✔</span>
+                              ) : (
+                                <span className="incorrect-icon">✘</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                currentQuestion && (
+                  <div className="live-quiz-options-container true-false">
+                    <div
+                      className={`live-quiz-option-row ${
+                        selectedOption === "True"
+                          ? isCorrect
+                            ? "correct"
+                            : "incorrect"
+                          : ""
+                      }`}
+                      onClick={() => handleOptionSelect("True")}
+                    >
+                      <div className="live-quiz-option-input-wrapper">
+                        <input
+                          type="text"
+                          value="True"
+                          readOnly
+                          className="live-quiz-option-input true-option"
+                        />
                         <div
                           className={`live-quiz-option-radio ${
-                            selectedOption === option ? "selected" : ""
+                            selectedOption === "True" ? "selected" : ""
                           }`}
                         >
                           <div className="live-quiz-radio-inner"></div>
                         </div>
-                      )}
-                      {selectedOption === option && (
-                        <div className="live-quiz-option-icon">
-                          {isCorrect ? (
-                            <span className="correct-icon">✔</span>
-                          ) : (
-                            <span className="incorrect-icon">✘</span>
-                          )}
+                        {selectedOption === "True" && (
+                          <div className="live-quiz-option-icon">
+                            {isCorrect ? (
+                              <span className="correct-icon">✔</span>
+                            ) : (
+                              <span className="incorrect-icon">✘</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div
+                      className={`live-quiz-option-row ${
+                        selectedOption === "False"
+                          ? isCorrect
+                            ? "correct"
+                            : "incorrect"
+                          : ""
+                      }`}
+                      onClick={() => handleOptionSelect("False")}
+                    >
+                      <div className="live-quiz-option-input-wrapper">
+                        <input
+                          type="text"
+                          value="False"
+                          readOnly
+                          className="live-quiz-option-input false-option"
+                        />
+                        <div
+                          className={`live-quiz-option-radio ${
+                            selectedOption === "False" ? "selected" : ""
+                          }`}
+                        >
+                          <div className="live-quiz-radio-inner"></div>
                         </div>
-                      )}
+                        {selectedOption === "False" && (
+                          <div className="live-quiz-option-icon">
+                            {isCorrect ? (
+                              <span className="correct-icon">✔</span>
+                            ) : (
+                              <span className="incorrect-icon">✘</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
+                )
+              )}
             </div>
-          ) : (
-            currentQuestion && (
-              <div className="live-quiz-options-container true-false">
-                <div
-                  className={`live-quiz-option-row ${
-                    selectedOption === "True"
-                      ? isCorrect
-                        ? "correct"
-                        : "incorrect"
-                      : ""
-                  }`}
-                  onClick={() => handleOptionSelect("True")}
-                >
-                  <div className="live-quiz-option-input-wrapper">
-                    <input
-                      type="text"
-                      value="True"
-                      readOnly
-                      className="live-quiz-option-input true-option"
-                    />
-                    <div
-                      className={`live-quiz-option-radio ${
-                        selectedOption === "True" ? "selected" : ""
-                      }`}
-                    >
-                      <div className="live-quiz-radio-inner"></div>
-                    </div>
-                    {selectedOption === "True" && (
-                      <div className="live-quiz-option-icon">
-                        {isCorrect ? (
-                          <span className="correct-icon">✔</span>
-                        ) : (
-                          <span className="incorrect-icon">✘</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div
-                  className={`live-quiz-option-row ${
-                    selectedOption === "False"
-                      ? isCorrect
-                        ? "correct"
-                        : "incorrect"
-                      : ""
-                  }`}
-                  onClick={() => handleOptionSelect("False")}
-                >
-                  <div className="live-quiz-option-input-wrapper">
-                    <input
-                      type="text"
-                      value="False"
-                      readOnly
-                      className="live-quiz-option-input false-option"
-                    />
-                    <div
-                      className={`live-quiz-option-radio ${
-                        selectedOption === "False" ? "selected" : ""
-                      }`}
-                    >
-                      <div className="live-quiz-radio-inner"></div>
-                    </div>
-                    {selectedOption === "False" && (
-                      <div className="live-quiz-option-icon">
-                        {isCorrect ? (
-                          <span className="correct-icon">✔</span>
-                        ) : (
-                          <span className="incorrect-icon">✘</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )
-          )}
-
-          <div className="live-quiz-navigation-buttons">
-            <button
-              onClick={handlePreviousQuestion}
-              disabled={selectedQuestionIndex === 0}
-            >
-              Previous
-            </button>
-            <button
-              onClick={handleNextQuestion}
-              disabled={selectedQuestionIndex === questions.length - 1}
-            >
-              Next
-            </button>
           </div>
-        </div>
-      </div>
+        </>
+      ) : (
+        <>
+          {allParticipantsFinished ? (
+            // Show full leaderboard only when all participants have finished
+            <LeaderboardResults
+              score={score}
+              leaderboard={leaderboard}
+              currentPlayerId={location.state?.playerId}
+              isLoading={leaderboard.length === 0}
+            />
+          ) : (
+            // Show waiting screen while other participants are still finishing
+            <WaitingForResults
+              score={score}
+              playerName={location.state?.playerName || "Player"}
+            />
+          )}
+        </>
+      )}
     </div>
   );
 };

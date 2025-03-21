@@ -8,6 +8,7 @@ import { nanoid } from "nanoid";
 import { emitParticipantJoined } from "../utils/socketEvents.js";
 import { customAlphabet } from "nanoid";
 import { fileURLToPath } from "url";
+import PlayerScore from "../models/PlayerScore.js"; // Make sure to import this
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -733,5 +734,157 @@ export const getQuizForParticipant = async (req, res) => {
       message: "Failed to fetch quiz data",
       error: error.message,
     });
+  }
+};
+
+// Add this controller function to quizController.js or create a new resultsController.js
+
+export const getQuizResults = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const { sessionId } = req.query;
+
+    console.log(`Getting results for quiz ${quizId}, session ${sessionId}`);
+
+    // Find the session
+    const session = await QuizSession.findOne({
+      $or: [{ _id: sessionId }, { quizId, isActive: true }],
+    });
+
+    if (!session) {
+      console.log(
+        `No session found for quiz ${quizId} with sessionId ${sessionId}`
+      );
+      return res.status(404).json({ message: "Quiz session not found" });
+    }
+
+    console.log(`Found session: ${session._id}`);
+
+    // Get all player scores for this session
+    const playerScores = await PlayerScore.find({
+      quizId,
+      sessionId: session._id,
+    }).populate("playerId", "name");
+
+    console.log(`Found ${playerScores.length} player scores`);
+
+    // If no scores yet, try to get total questions count for the quiz
+    const quiz = await Quiz.findById(quizId);
+    const totalQuestions = quiz?.questions?.length || 0;
+
+    // Get all players for this session
+    const players = await Player.find({
+      sessionId: session._id,
+      isHost: { $ne: true }, // Exclude the host
+    });
+
+    console.log(`Found ${players.length} players in this session`);
+
+    // Format scores for the leaderboard
+    const results = [];
+
+    // Add players with scores
+    for (const score of playerScores) {
+      // Count correct answers
+      const correctAnswers = score.answers.filter(
+        (answer) => answer.isCorrect
+      ).length;
+
+      results.push({
+        playerId: score.playerId?._id || score.playerId,
+        playerName: score.playerId?.name || "Anonymous",
+        score: score.totalScore || 0,
+        correctAnswers,
+        totalQuestions,
+      });
+    }
+
+    // Add players without scores (who might not have answered any questions)
+    for (const player of players) {
+      // Check if player is already in results
+      const alreadyInResults = results.some(
+        (result) =>
+          result.playerId &&
+          result.playerId.toString() === player._id.toString()
+      );
+
+      if (!alreadyInResults) {
+        results.push({
+          playerId: player._id,
+          playerName: player.name || "Anonymous",
+          score: 0,
+          correctAnswers: 0,
+          totalQuestions,
+        });
+      }
+    }
+
+    // Sort by score (highest first)
+    results.sort((a, b) => b.score - a.score);
+
+    res.json(results);
+  } catch (error) {
+    console.error("Error fetching quiz results:", error);
+    res.status(500).json({ message: "Error fetching quiz results" });
+  }
+};
+
+// Add this new controller function:
+
+export const getSessionStatus = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const { sessionId } = req.query;
+
+    console.log(
+      `Checking session status for quiz ${quizId}, session ${sessionId}`
+    );
+
+    // Find the session
+    const session = await QuizSession.findOne({
+      $or: [{ _id: sessionId }, { quizId, isActive: true }],
+    });
+
+    if (!session) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+
+    // Get player count from Player collection instead of accessing session.players
+    const totalPlayers = await Player.countDocuments({
+      sessionId: session._id,
+      isHost: { $ne: true }, // Exclude hosts
+    });
+
+    // Get completed count from PlayerScore collection
+    const completedCount = await PlayerScore.countDocuments({
+      sessionId: session._id,
+      completed: true,
+    });
+
+    console.log(
+      `Session status: ${completedCount} of ${totalPlayers} players completed`
+    );
+
+    // Only mark as complete when ALL players have finished AND we have at least one player
+    const isComplete = totalPlayers > 0 && completedCount >= totalPlayers;
+
+    // If all players have completed, update the session
+    if (isComplete && !session.allCompleted) {
+      await QuizSession.findByIdAndUpdate(session._id, {
+        $set: { allCompleted: true },
+      });
+    }
+
+    res.json({
+      quizId,
+      sessionId: session._id,
+      totalPlayers,
+      completedCount,
+      allCompleted: isComplete || session.allCompleted,
+      pin: session.pin,
+    });
+  } catch (error) {
+    console.error("Error checking session status:", error);
+    res.status(500).json({ message: "Error checking session status" });
   }
 };

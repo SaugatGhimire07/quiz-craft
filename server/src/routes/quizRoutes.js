@@ -16,6 +16,8 @@ import {
   getSessionParticipants,
   getQuizStatus,
   getQuizForParticipant,
+  getQuizResults,
+  getSessionStatus,
 } from "../controllers/quizController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 
@@ -34,6 +36,7 @@ router.get("/:quizId/session/active", getOrCreateQuizSession);
 router.post("/:quizId/session/start", startQuizSession);
 router.post("/join", joinQuizSession);
 router.get("/:quizId/status", getQuizStatus);
+router.get("/:quizId/results", getQuizResults);
 
 // For participants (no auth required)
 router.get("/:quizId/session/active", getOrCreateQuizSession);
@@ -41,6 +44,7 @@ router.get("/:quizId/session", getOrCreateQuizSession);
 router.get("/session/:pin/participants", getSessionParticipants);
 router.post("/:quizId/session/participant-start", startQuizSession);
 router.get("/:quizId/participant-view", getQuizForParticipant);
+router.get("/:quizId/session-status", getSessionStatus);
 
 // For hosts (auth required)
 router.get("/:quizId/session/host", protect, getOrCreateQuizSession);
