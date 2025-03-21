@@ -878,10 +878,11 @@ export const getSessionStatus = async (req, res) => {
       return res.status(404).json({ message: "Session not found" });
     }
 
-    // Get player count from Player collection instead of accessing session.players
+    // Get player count from Player collection - EXCLUDING HOSTS
     const totalPlayers = await Player.countDocuments({
       sessionId: session._id,
       isHost: { $ne: true }, // Exclude hosts
+      role: { $ne: "host" }, // Also check role field
     });
 
     // Get completed count from PlayerScore collection
@@ -894,14 +895,17 @@ export const getSessionStatus = async (req, res) => {
       `Session status: ${completedCount} of ${totalPlayers} players completed`
     );
 
-    // Only mark as complete when ALL players have finished AND we have at least one player
-    const isComplete = totalPlayers > 0 && completedCount >= totalPlayers;
+    // STRICT EQUALITY CHECK - only complete when ALL players have finished
+    const isComplete = totalPlayers > 0 && completedCount === totalPlayers;
 
     // If all players have completed, update the session
     if (isComplete && !session.allCompleted) {
       await QuizSession.findByIdAndUpdate(session._id, {
         $set: { allCompleted: true },
       });
+      console.log(
+        `All ${totalPlayers} players have completed. Marking session as complete.`
+      );
     }
 
     res.json({

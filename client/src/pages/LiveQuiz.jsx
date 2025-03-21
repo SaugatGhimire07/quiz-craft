@@ -307,47 +307,54 @@ const LiveQuiz = () => {
         }
 
         const response = await api.get(`/quiz/${quizId}/results`, {
-          params: {
-            sessionId: location.state.sessionId,
-          },
+          params: { sessionId: location.state.sessionId },
         });
 
         console.log("Raw leaderboard data:", response.data);
 
         if (Array.isArray(response.data) && response.data.length > 0) {
-          console.log(
-            "Valid leaderboard received with",
-            response.data.length,
-            "entries"
-          );
-
-          // Add current player if missing
-          const currentPlayerIncluded = response.data.some(
+          // Get player's data from leaderboard
+          const currentPlayerEntry = response.data.find(
             (player) => player.playerId === location.state.playerId
           );
 
-          if (!currentPlayerIncluded && location.state?.playerName) {
-            console.log("Current player not found in results, adding manually");
-            const playerResults = [...response.data];
-            playerResults.push({
-              playerId: location.state.playerId,
-              playerName: location.state.playerName,
-              score,
-              correctAnswers: score > 0 ? Math.ceil(score / 100) : 0,
-              totalQuestions: questions.length || totalQuestions,
-            });
-            playerResults.sort((a, b) => b.score - a.score);
+          // If player found in server leaderboard and score mismatch
+          if (currentPlayerEntry && currentPlayerEntry.score !== score) {
+            console.log(
+              `Score mismatch for current player: Local=${score}, Server=${currentPlayerEntry.score}`
+            );
 
-            if (shouldUpdateUI) {
-              setLeaderboard(playerResults);
+            // If server score is 0 but local score is higher, override it
+            if (currentPlayerEntry.score === 0 && score > 0) {
+              console.log(
+                "Server reports zero score but we have local score, replacing"
+              );
+
+              const updatedLeaderboard = response.data.map((entry) => {
+                if (entry.playerId === location.state.playerId) {
+                  return {
+                    ...entry,
+                    score: score,
+                    correctAnswers: Object.keys(localScores).length,
+                  };
+                }
+                return entry;
+              });
+
+              if (shouldUpdateUI) {
+                setLeaderboard(updatedLeaderboard);
+              }
+              return updatedLeaderboard;
+            } else {
+              // If server has a valid score, use it and update local state
+              setScore(currentPlayerEntry.score);
             }
-            return playerResults;
-          } else {
-            if (shouldUpdateUI) {
-              setLeaderboard(response.data);
-            }
-            return response.data;
           }
+
+          if (shouldUpdateUI) {
+            setLeaderboard(response.data);
+          }
+          return response.data;
         } else {
           console.warn("Empty leaderboard data, using fallback");
           const fallbackData = createFallbackLeaderboard();
@@ -365,7 +372,7 @@ const LiveQuiz = () => {
         return fallbackData;
       }
     },
-    [quizId, location.state, score, questions.length, totalQuestions]
+    [quizId, location.state, score, localScores]
   );
 
   useEffect(() => {
@@ -436,43 +443,48 @@ const LiveQuiz = () => {
     if (quizComplete && !allParticipantsFinished) {
       const pollInterval = setInterval(async () => {
         try {
-          console.log("Polling for complete results...");
-          const updatedLeaderboard = await fetchLeaderboard();
+          console.log(
+            "Polling session status to check if all participants finished..."
+          );
 
-          // If there's only one player (the current user), consider it finished
-          if (
-            updatedLeaderboard.length === 1 &&
-            updatedLeaderboard[0].playerId === location.state?.playerId
-          ) {
-            console.log("Single participant detected, showing results");
+          // Directly check session status via API
+          const statusResponse = await api.get(
+            `/quiz/${quizId}/session-status`,
+            {
+              params: { sessionId: location.state?.sessionId },
+            }
+          );
+
+          console.log("Session status:", statusResponse.data);
+
+          // Only show results when server confirms ALL have finished
+          if (statusResponse.data.allCompleted === true) {
+            console.log("Server confirmed all participants have completed");
             setAllParticipantsFinished(true);
-            return;
-          }
 
-          // Rest of the existing code for multiple participants...
-          if (updatedLeaderboard.length > 1) {
+            // Fetch latest leaderboard data
+            fetchLeaderboard(true);
+          } else {
             console.log(
-              "Multiple participants found in results, showing leaderboard"
+              `Waiting for more participants to finish: ${statusResponse.data.completedCount}/${statusResponse.data.totalPlayers}`
             );
-            setAllParticipantsFinished(true);
-          }
 
-          // Check session status via API
-          // ...existing code...
+            // Update leaderboard without forcing UI refresh
+            await fetchLeaderboard(false);
+          }
         } catch (error) {
-          console.error("Error polling for results:", error);
+          console.error("Error polling session status:", error);
         }
-      }, 2000);
+      }, 3000);
 
       return () => clearInterval(pollInterval);
     }
   }, [
     quizComplete,
     allParticipantsFinished,
-    fetchLeaderboard,
     quizId,
     location.state?.sessionId,
-    location.state?.playerId,
+    fetchLeaderboard,
   ]);
 
   useEffect(() => {
@@ -540,25 +552,33 @@ const LiveQuiz = () => {
         "Last question answered, waiting for all participants to finish"
       );
 
+      // Calculate final score from stored answers
+      const finalScore = Object.values(localScores).reduce(
+        (sum, score) => sum + score,
+        0
+      );
+      console.log(
+        `Calculated final score: ${finalScore} from local answers:`,
+        localScores
+      );
+
+      // Update state with final calculated score
+      setScore(finalScore);
+
       // Mark this participant as complete
       setQuizComplete(true);
 
       // Notify the server this participant has completed
       if (socket?.connected && location.state?.playerId) {
+        console.log(`Sending final score ${finalScore} to server`);
         socket.emit("quizComplete", {
           quizId,
           sessionId: location.state?.sessionId,
           playerId: location.state.playerId,
-          totalScore: score, // Make sure this is included
+          totalScore: finalScore,
         });
-
-        // Get the current leaderboard for this participant
-        if (liveLeaderboard.length > 0) {
-          setLeaderboard(liveLeaderboard);
-        } else {
-          fetchLeaderboard();
-        }
       } else {
+        console.warn("Socket not connected, using local leaderboard only");
         // Fallback when socket isn't connected
         fetchLeaderboard();
       }
@@ -605,15 +625,28 @@ const LiveQuiz = () => {
         console.log(
           `Sending score ${questionScore} to server for player ${location.state.playerId}`
         );
-        socket.emit("submitAnswer", {
-          quizId,
-          questionId: currentQuestion._id,
-          playerId: location.state.playerId,
-          answer: option,
-          isCorrect: true,
-          timeTaken,
-          score: questionScore,
-        });
+        // Wait for acknowledgement that score was saved
+        socket.emit(
+          "submitAnswer",
+          {
+            quizId,
+            questionId: currentQuestion._id,
+            playerId: location.state.playerId,
+            answer: option,
+            isCorrect: true,
+            timeTaken,
+            score: questionScore,
+          },
+          (response) => {
+            if (response && response.success) {
+              console.log("Server confirmed answer was saved successfully");
+            } else {
+              console.warn(
+                "Server did not confirm answer save. Will rely on local score."
+              );
+            }
+          }
+        );
       } else {
         console.warn("Socket connection issue - caching score locally");
         // Could add local storage caching here if needed

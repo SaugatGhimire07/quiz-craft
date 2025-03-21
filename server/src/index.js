@@ -461,8 +461,8 @@ io.on("connection", (socket) => {
 
         console.log(`Found session: ${session._id}`);
 
-        // Find and update player score record
-        const playerScore = await PlayerScore.findOneAndUpdate(
+        // Find or create player score record with DEFINED totalScore
+        await PlayerScore.findOneAndUpdate(
           {
             quizId,
             playerId,
@@ -471,28 +471,17 @@ io.on("connection", (socket) => {
           {
             $set: {
               completed: true,
-              totalScore: totalScore || 0, // Use submitted total score
+              totalScore: totalScore || 0, // Use submitted score directly
             },
           },
-          { new: true, upsert: true }
+          { upsert: true, new: true }
         );
 
         console.log(
-          `Updated PlayerScore with completed status. Final score: ${playerScore.totalScore}, Answers: ${playerScore.answers.length}`
+          `Updated PlayerScore for ${playerId}. Final score set to: ${totalScore}`
         );
 
-        // Immediately verify the player score is saved correctly
-        const verifyScore = await PlayerScore.findOne({
-          quizId,
-          playerId,
-          sessionId: session._id,
-        });
-
-        console.log(
-          `Verification - PlayerScore found: ${!!verifyScore}, Score: ${
-            verifyScore?.totalScore
-          }, Completed: ${verifyScore?.completed}`
-        );
+        // Continue with existing code to check if all players finished...
       } catch (error) {
         console.error("Error handling quiz completion:", error);
       }
