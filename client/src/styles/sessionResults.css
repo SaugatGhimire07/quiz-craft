@@ -1,0 +1,87 @@
+.session-results-container {
+  flex: 1;
+  padding: 32px;
+}
+
+.session-details {
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  overflow: hidden;
+  padding: 24px;
+}
+
+.session-details h1 {
+  font-size: 24px;
+  margin: 16px 0;
+  color: #302d2c;
+}
+
+.session-details h2 {
+  font-size: 20px;
+  margin: 16px 0;
+  color: #5868e9;
+}
+
+.session-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+  background-color: #f8f8f8;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #666;
+}
+
+.stat-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #302d2c;
+}
+
+.participants-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 30px;
+}
+
+.participants-table th {
+  background-color: #f5f5f5;
+  font-weight: bold;
+  padding: 12px;
+  text-align: left;
+}
+
+.participants-table tr {
+  border-bottom: 1px solid #eee;
+}
+
+.participants-table tr:last-child {
+  border-bottom: none;
+}
+
+.participants-table td {
+  padding: 12px;
+}
+
+.participants-table .score-cell {
+  font-weight: 600;
+  color: #5868e9;
+}
+
+.participant-name {
+  font-size: 18px;
+  margin: 8px 0 16px 0;
+  color: #45178e;
+}

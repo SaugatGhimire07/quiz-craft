@@ -985,17 +985,126 @@ export const getUserQuizHistory = async (req, res) => {
   }
 };
 
+// Update the getUserQuizResults function to handle the playerId parameter
 export const getUserQuizResults = async (req, res) => {
   try {
     const { quizId } = req.params;
-    const { sessionId } = req.query;
+    const { sessionId, playerId } = req.query;
     const userId = req.user._id;
 
     console.log(
-      `Getting user results for quiz ${quizId}, session ${sessionId}, user ${userId}`
+      `Getting user results for quiz ${quizId}, session ${sessionId}, user ${userId}, playerId ${playerId}`
     );
 
-    // Find the player score for this user, quiz and session
+    // If playerId is provided (host viewing participant results), verify host has access
+    if (playerId) {
+      // Verify the quiz belongs to this user
+      const quiz = await Quiz.findById(quizId);
+      if (!quiz) {
+        return res.status(404).json({ message: "Quiz not found" });
+      }
+
+      if (quiz.createdBy.toString() !== userId.toString()) {
+        return res
+          .status(403)
+          .json({ message: "Not authorized to view these results" });
+      }
+
+      // Find the player score using playerId
+      const playerScore = await PlayerScore.findOne({
+        playerId,
+        quizId,
+        sessionId,
+      })
+        .populate({
+          path: "quizId",
+          select: "title questions",
+        })
+        .populate({
+          path: "sessionId",
+          select: "startedAt endedAt type",
+        })
+        .populate({
+          path: "playerId",
+          select: "name",
+        });
+
+      if (!playerScore) {
+        return res
+          .status(404)
+          .json({ message: "Player's quiz results not found" });
+      }
+
+      // Format and return the player's results as before
+      // Continue with existing results formatting code
+      const questionResults = playerScore.answers.map((answer) => {
+        const question = quiz.questions.find(
+          (q) => q._id.toString() === answer.questionId.toString()
+        );
+
+        return {
+          questionId: answer.questionId,
+          questionText:
+            answer.questionText ||
+            question?.questionText ||
+            "Question not available",
+          options: answer.options || question?.options || [],
+          correctAnswer: answer.correctOption || question?.correctOption || "",
+          userAnswer: answer.answer,
+          isCorrect: answer.isCorrect,
+          image: question?.image || null,
+          timeTaken: answer.timeTaken,
+          score: answer.score,
+        };
+      });
+
+      // Calculate stats
+      const correctAnswers = questionResults.filter((q) => q.isCorrect).length;
+      const totalQuestions = questionResults.length;
+      const percentage =
+        totalQuestions > 0
+          ? Math.round((correctAnswers / totalQuestions) * 100)
+          : 0;
+
+      // Get total time taken
+      const totalTimeTaken =
+        playerScore.timeTaken ||
+        playerScore.answers.reduce((sum, a) => sum + (a.timeTaken || 0), 0);
+
+      // Find the rank among participants
+      const allScores = await PlayerScore.find({
+        sessionId,
+        completed: true,
+      }).sort({ totalScore: -1 });
+
+      let rank = 0;
+      for (let i = 0; i < allScores.length; i++) {
+        if (allScores[i]._id.toString() === playerScore._id.toString()) {
+          rank = i + 1;
+          break;
+        }
+      }
+
+      return res.json({
+        quizId,
+        quizTitle: quiz.title,
+        playerName: playerScore.playerId?.name || "Anonymous",
+        sessionId,
+        participatedAt:
+          playerScore.sessionId?.startedAt || playerScore.createdAt,
+        score: playerScore.totalScore,
+        correctAnswers,
+        totalQuestions,
+        percentage,
+        timeTaken: totalTimeTaken,
+        rank: rank || playerScore.rank || null,
+        questions: questionResults,
+        sessionType: playerScore.sessionId?.type || "live",
+        totalParticipants: allScores.length,
+      });
+    }
+
+    // Otherwise, proceed with normal user results lookup
     const playerScore = await PlayerScore.findOne({
       $or: [
         { userId, quizId, sessionId },
@@ -1102,4 +1211,124 @@ export const getUserQuizResults = async (req, res) => {
 const getPlayerIdsByUser = async (userId) => {
   const players = await Player.find({ userId });
   return players.map((player) => player._id);
+};
+
+export const getHostedQuizzes = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Find all quizzes created by this user
+    const hostedQuizzes = await Quiz.find({ createdBy: userId }).sort({
+      createdAt: -1,
+    });
+
+    // For each quiz, get session data and participant count
+    const hostedQuizData = await Promise.all(
+      hostedQuizzes.map(async (quiz) => {
+        // Find the most recent active session for this quiz
+        const sessions = await QuizSession.find({
+          quizId: quiz._id,
+        }).sort({ createdAt: -1 });
+
+        // Get participant counts for each session
+        const sessionsWithParticipants = await Promise.all(
+          sessions.map(async (session) => {
+            const participantCount = await PlayerScore.countDocuments({
+              quizId: quiz._id,
+              sessionId: session._id,
+            });
+
+            return {
+              sessionId: session._id,
+              pin: session.pin,
+              startedAt: session.startedAt,
+              endedAt: session.endedAt,
+              isActive: session.isActive,
+              status: session.status,
+              participantCount,
+            };
+          })
+        );
+
+        return {
+          quizId: quiz._id,
+          quizTitle: quiz.title,
+          createdAt: quiz.createdAt,
+          status: quiz.status,
+          sessions: sessionsWithParticipants,
+        };
+      })
+    );
+
+    res.json(hostedQuizData);
+  } catch (error) {
+    console.error("Error fetching hosted quizzes:", error);
+    res.status(500).json({ message: "Failed to fetch hosted quizzes" });
+  }
+};
+
+// Add a new endpoint to get session participants with their scores
+export const getSessionParticipantResults = async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const userId = req.user._id;
+
+    // Verify the user is the host of this session
+    const session = await QuizSession.findById(sessionId);
+    if (!session) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+
+    // Find the quiz to check ownership
+    const quiz = await Quiz.findById(session.quizId);
+    if (!quiz) {
+      return res.status(404).json({ message: "Quiz not found" });
+    }
+
+    // Verify ownership
+    if (quiz.createdBy.toString() !== userId.toString()) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to view these results" });
+    }
+
+    // Get all player scores for this session
+    const participantResults = await PlayerScore.find({ sessionId }).populate(
+      "playerId",
+      "name avatarSeed"
+    );
+
+    const formattedResults = participantResults.map((score) => {
+      const correctAnswers =
+        score.answers?.filter((a) => a.isCorrect).length || 0;
+      const totalQuestions = score.answers?.length || 0;
+      const percentage =
+        totalQuestions > 0
+          ? Math.round((correctAnswers / totalQuestions) * 100)
+          : 0;
+
+      return {
+        playerId: score.playerId?._id,
+        playerName: score.playerId?.name || "Anonymous",
+        avatarSeed: score.playerId?.avatarSeed,
+        score: score.totalScore,
+        correctAnswers,
+        totalQuestions,
+        percentage,
+        timeTaken: score.timeTaken,
+        rank: score.rank,
+        completed: score.completed,
+      };
+    });
+
+    res.json({
+      sessionId,
+      quizId: session.quizId,
+      quizTitle: quiz.title,
+      participants: formattedResults,
+    });
+  } catch (error) {
+    console.error("Error fetching session participants:", error);
+    res.status(500).json({ message: "Failed to fetch session participants" });
+  }
 };

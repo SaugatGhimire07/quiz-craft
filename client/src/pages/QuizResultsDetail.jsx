@@ -10,7 +10,11 @@ const QuizResultsDetail = () => {
   const navigate = useNavigate();
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Get these values from location state
   const sessionId = location.state?.sessionId;
+  const playerId = location.state?.playerId; // New: for host viewing participant results
+  const isHost = location.state?.isHost; // New: flag to indicate if host is viewing
 
   useEffect(() => {
     if (!sessionId) {
@@ -20,9 +24,15 @@ const QuizResultsDetail = () => {
 
     const fetchResults = async () => {
       try {
-        const response = await api.get(`/quiz/${quizId}/user-results`, {
-          params: { sessionId },
-        });
+        let url = `/quiz/${quizId}/user-results`;
+        const params = { sessionId };
+
+        // If host is viewing a specific participant's results
+        if (isHost && playerId) {
+          params.playerId = playerId;
+        }
+
+        const response = await api.get(url, { params });
         setResults(response.data);
       } catch (error) {
         console.error("Error fetching quiz results:", error);
@@ -32,10 +42,15 @@ const QuizResultsDetail = () => {
     };
 
     fetchResults();
-  }, [quizId, sessionId, navigate]);
+  }, [quizId, sessionId, navigate, playerId, isHost]);
 
   const handleBackToReports = () => {
-    navigate("/reports");
+    // If host is viewing participant's results, return to session results page
+    if (isHost) {
+      navigate(`/session-results/${sessionId}`);
+    } else {
+      navigate("/reports");
+    }
   };
 
   // Format time (from seconds to mm:ss format)
@@ -74,10 +89,16 @@ const QuizResultsDetail = () => {
             >
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
-            Back to Reports
+            {isHost ? "Back to Session Results" : "Back to Reports"}
           </button>
+
           <div className="quiz-results-header">
             <h1>{results.quizTitle}</h1>
+            {isHost && results.playerName && (
+              <h2 className="participant-name">
+                Participant: {results.playerName}
+              </h2>
+            )}
 
             <div className="results-summary-grid">
               <div className="summary-item">
@@ -110,7 +131,7 @@ const QuizResultsDetail = () => {
               </div>
               {results.rank && (
                 <div className="summary-item">
-                  <span className="summary-label">Your Rank:</span>
+                  <span className="summary-label">Rank:</span>
                   <span className="summary-value rank-highlight">
                     {results.rank}/{results.totalParticipants || "?"}
                   </span>

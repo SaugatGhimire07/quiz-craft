@@ -20,6 +20,7 @@ import LiveQuiz from "../pages/LiveQuiz"; // Import LiveQuiz component
 import AdminOrganization from "../pages/AdminOrganization";
 import ReportPage from "../pages/ReportPage";
 import QuizResultsDetail from "../pages/QuizResultsDetail";
+import SessionResults from "../pages/SessionResults";
 
 const AppRoutes = () => {
   return (
@@ -131,6 +132,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <QuizResultsDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/session-results/:sessionId"
+          element={
+            <ProtectedRoute>
+              <SessionResults />
             </ProtectedRoute>
           }
         />
