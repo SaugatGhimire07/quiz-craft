@@ -12,6 +12,7 @@ const AdminOrganization = () => {
   const { user, isAdmin } = useAuth();
   const [initials, setInitials] = useState("");
   const [name, setName] = useState("");
+  const [orgID, setOrgID] = useState(null);
   const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrg, setSelectedOrg] = useState(null);
@@ -39,11 +40,21 @@ const AdminOrganization = () => {
   };
 
   const fetchPeople = async (orgId) => {
+    console.log("Fetching people for organization ID:", orgId); // Log orgId
+
     try {
       const response = await api.get(`/organization/${orgId}/people`);
+      console.log("Fetched people:", response.data); // Log the fetched people
       setPeople(response.data);
     } catch (error) {
       console.error("Error fetching people:", error);
+
+      // Log the error response for debugging
+      if (error.response) {
+        console.log("Error response data:", error.response.data);
+        console.log("Error response status:", error.response.status);
+        console.log("Error response headers:", error.response.headers);
+      }
     }
   };
 
@@ -53,11 +64,11 @@ const AdminOrganization = () => {
       setName(userName);
       const userInitials = userName
         ? userName
-            .split(" ")
-            .map((name) => name[0])
-            .join("")
-            .toUpperCase()
-            .substring(0, 2)
+          .split(" ")
+          .map((name) => name[0])
+          .join("")
+          .toUpperCase()
+          .substring(0, 2)
         : "";
       setInitials(userInitials);
 
@@ -92,7 +103,8 @@ const AdminOrganization = () => {
     setShowImportPerson(false);
   };
 
-  const handleCreatePerson = () => {
+  const handleCreatePerson = (orgId) => {
+    setSelectedOrg(orgId); // Automatically select the organization
     setShowCreateOrg(false);
     setShowModifyOrg(false);
     setShowCreatePerson(true);
@@ -117,14 +129,27 @@ const AdminOrganization = () => {
   };
 
   const handleDeletePerson = async () => {
-    if (!personToDelete) return;
+    if (!personToDelete) {
+      console.log("No person selected for deletion."); // Log if no person is selected
+      return;
+    }
+
+    console.log("Deleting person with ID:", personToDelete._id); // Log person ID
 
     try {
-      await api.delete(`/person/${personToDelete._id}`);
+      const response = await api.delete(`/person/${personToDelete._id}`);
+      console.log("Delete person response:", response.data); // Log the response
       setPeople(people.filter((person) => person._id !== personToDelete._id));
       setShowDeleteConfirmation(false);
     } catch (error) {
       console.error("Error deleting person:", error);
+
+      // Log the error response for debugging
+      if (error.response) {
+        console.log("Error response data:", error.response.data);
+        console.log("Error response status:", error.response.status);
+        console.log("Error response headers:", error.response.headers);
+      }
     }
   };
 
@@ -133,47 +158,61 @@ const AdminOrganization = () => {
       setActiveDropdown(null);
     } else {
       setActiveDropdown(orgId);
+      setSelectedOrg(orgId); // Ensure selectedOrg is set
       handleSelectOrg(orgId);
     }
   };
 
   const ImportPeople = ({ orgId, onClose, onImport }) => {
     const [file, setFile] = useState(null);
-
+    const [error, setError] = useState(""); // State for error message
+  
     const handleFileChange = (e) => {
       setFile(e.target.files[0]);
     };
-
+  
     const handleSubmit = async () => {
       if (!file) {
-        alert("Please select a file to upload.");
+        setError("Please select a file to upload.");
         return;
       }
-
+  
+      if (!orgId) {
+        setError("Organization ID is missing. Please select an organization.");
+        return;
+      }
+  
       const formData = new FormData();
       formData.append("file", file);
-
+  
       try {
-        const response = await api.post(
-          `/organization/${orgId}/import-people`,
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
+        const response = await api.post(`/organization/${orgId}/import-people`, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
         onImport(response.data);
         onClose();
+        setError(""); // Clear error message on success
       } catch (error) {
         console.error("Error importing people:", error);
-        alert("Failed to import people. Please try again.");
+  
+        // Display backend validation errors
+        if (error.response && error.response.data && error.response.data.errors) {
+          const errorMessages = error.response.data.errors.map((err) => err.error).join("\n");
+          setError(errorMessages); // Show backend error messages
+        } else if (error.response && error.response.data && error.response.data.error) {
+          setError(error.response.data.error); // Show backend error message
+        } else {
+          setError("Failed to import people. Please try again.");
+        }
       }
     };
-
+  
     return (
       <div className="import-people-container">
         <h2>Import People</h2>
+        {error && <div className="error-message">{error}</div>} {/* Display error message */}
         <div className="form-group">
           <label htmlFor="file">Select Excel File</label>
           <input
@@ -193,24 +232,46 @@ const AdminOrganization = () => {
 
   const CreateOrganization = () => {
     const [orgName, setOrgName] = useState("");
+    const [error, setError] = useState(""); // State for error message
 
     const handleCreateOrg = async () => {
+      // Frontend validation
+      if (!orgName || orgName.trim() === "") {
+        setError("Organization name is required.");
+        return;
+      }
+  
+      if (orgName.length < 3 || orgName.length > 50) {
+        setError("Organization name must be between 3 and 50 characters.");
+        return;
+      }
+  
       try {
         await api.post("/organization", { name: orgName });
         fetchOrganizations();
         setShowCreateOrg(false);
+        setError(""); // Clear error message on success
       } catch (error) {
         console.error("Error creating organization:", error);
+  
+        // Display backend validation errors
+        if (error.response && error.response.data && error.response.data.error) {
+          setError(error.response.data.error); // Show backend error message
+        } else {
+          setError("Failed to create organization. Please try again.");
+        }
       }
     };
 
     const handleCancel = () => {
       setShowCreateOrg(false);
+      setError(""); // Clear error message on cancel
     };
 
     return (
       <div className="create-org-container">
         <h2>Create Organization</h2>
+        {error && <div className="error-message">{error}</div>} {/* Display error message */}
         <div className="form-group">
           <label htmlFor="orgName">Organization Name</label>
           <input
@@ -274,27 +335,65 @@ const AdminOrganization = () => {
     );
   };
 
+  const handleDeleteOrg = async (orgId) => {
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this organization? All people under this organization will also be permanently deleted. This action cannot be undone."
+      )
+    ) {
+      return;
+    }
+  
+    try {
+      const response = await api.delete(`/organization/${orgId}`);
+      console.log("Delete organization response:", response.data);
+  
+      // Remove the deleted organization from the state
+      setOrganizations(organizations.filter((org) => org.orgId !== orgId));
+      setPeople([]); // Clear the people list if the selected organization is deleted
+      alert("Organization and all associated people deleted successfully.");
+    } catch (error) {
+      console.error("Error deleting organization:", error);
+  
+      // Display backend error message
+      if (error.response && error.response.data && error.response.data.error) {
+        alert(`Error: ${error.response.data.error}`);
+      } else {
+        alert("Failed to delete organization. Please try again.");
+      }
+    }
+  };
+
   const CreatePerson = () => {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [error, setError] = useState(""); // State for error message
 
     const handleCreatePerson = async () => {
-      // Check if email already exists
-      const isDuplicate = people.some((person) => person.email === email);
-      if (isDuplicate) {
-        setError("Duplicate email address is not allowed.");
-        return; // Stop execution if duplicate is found
+      if (!selectedOrg) {
+        alert("No organization selected. Please select an organization first.");
+        return;
+      }
+
+      if (!name || !email) {
+        setError("Name and email are required.");
+        return;
       }
 
       try {
-        await api.post(`/organization/${selectedOrg}/people`, { name, email });
+        const response = await api.post(`/organization/${selectedOrg}/people`, { name, email });
         fetchPeople(selectedOrg);
         setShowCreatePerson(false);
         setError(""); // Clear error message on success
       } catch (error) {
         console.error("Error creating person:", error);
-        setError("Failed to create person. Please try again.");
+
+        // Display backend validation errors
+        if (error.response && error.response.data && error.response.data.error) {
+          setError(error.response.data.error); // Show backend error message
+        } else {
+          setError("Failed to create person. Please try again.");
+        }
       }
     };
 
@@ -306,8 +405,7 @@ const AdminOrganization = () => {
     return (
       <div className="create-person-container">
         <h2>Create Person</h2>
-        {error && <div className="error-message">{error}</div>}{" "}
-        {/* Display error message */}
+        {error && <div className="error-message">{error}</div>} {/* Display error message */}
         <div className="form-group">
           <label htmlFor="name">Name</label>
           <input
@@ -377,6 +475,52 @@ const AdminOrganization = () => {
     );
   };
 
+  const PeopleTable = ({ people }) => {
+    return (
+      <table className="people-table">
+        <thead>
+          <tr className="people-table-header-row">
+            <th className="people-table-header-data">Name</th>
+            <th className="people-table-header-data">Email</th>
+            <th className="people-table-header-data">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {people.length > 0 ? (
+            people.map((person) => (
+              <tr className="people-table-data-row" key={person._id}>
+                <td className="people-table-data-name">{person.name}</td>
+                <td className="people-table-data-email">{person.email}</td>
+                <td className="people-table-data-actions">
+                  <div className="action-buttons-container">
+                    <button
+                      className="action-button modify"
+                      onClick={() => handleModifyPerson(person)}
+                    >
+                      Modify
+                    </button>
+                    <button
+                      className="action-button delete"
+                      onClick={(e) => confirmDeletePerson(e, person)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr className="people-table-empty-row">
+              <td className="people-table-empty-data" colSpan="3">
+                No people found in this organization.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    );
+  };
+
   return (
     <div className="dashboard-container">
       <DashNav initials={initials} />
@@ -400,121 +544,79 @@ const AdminOrganization = () => {
             <h2 className="sub-heading-title">All Organizations</h2>
             <table className="organization-table">
               <thead>
-                <tr className="organization-table-row">
-                  <th className="organization-table-header">
-                    Organization Name
-                  </th>
-                  <th className="organization-table-header">Actions</th>
+                <tr className="organization-table-header-row">
+                  <th className="organization-table-header-data">Organization Name</th>
+                  <th className="organization-table-header-data">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr className="organization-table-row">
-                    <td className="organization-table-data" colSpan="2">
+                  <tr className="organization-table-loading-row">
+                    <td className="organization-table-loading-data" colSpan="2">
                       Loading organizations...
                     </td>
                   </tr>
                 ) : organizations.length > 0 ? (
                   organizations.map((org) => (
-                    <React.Fragment key={org._id}>
-                      <tr className="organization-table-row">
+                    <React.Fragment key={org.orgId || org._id}>
+                      <tr className="organization-table-data-row">
                         <td
-                          className="organization-table-data"
-                          onClick={() => toggleDropdown(org._id)}
+                          className="organization-table-data-name"
+                          onClick={() => toggleDropdown(org.orgId)}
                         >
                           {org.name}
                           <button className="dropdown-arrow">
-                            {activeDropdown === org._id ? "▲" : "▼"}
+                            {activeDropdown === org.orgId ? "▲" : "▼"}
                           </button>
                         </td>
-                        <td className="organization-table-data">
-                          <button
-                            className="action-button modify"
-                            onClick={() => handleModifyOrg(org._id)}
-                          >
-                            <i className="fas fa-edit"></i> Modify
-                          </button>
-                          <button
-                            className="action-button add-person"
-                            onClick={() => handleCreatePerson()}
-                          >
-                            <i className="fas fa-user-plus"></i> Add Person
-                          </button>
-                          <button
-                            className="action-button import"
-                            onClick={() => setShowImportPerson(true)}
-                          >
-                            <i className="fas fa-file-import"></i> Import People
-                          </button>
+                        <td className="organization-table-data-actions">
+                          <div className="action-buttons-container">
+                            <button
+                              className="action-button modify"
+                              onClick={() => handleModifyOrg(org.orgId)}
+                            >
+                              Modify
+                            </button>
+                            <button
+                              className="action-button add-person"
+                              onClick={() => handleCreatePerson(org.orgId)} 
+                            >
+                              Add Person
+                            </button>
+                            <button
+                              className="action-button import"
+                              onClick={() => {
+                                if (!org.orgId) {
+                                  alert("Please select an organization first.");
+                                  return;
+                                }
+                                setSelectedOrg(org.orgId);
+                                setShowImportPerson(true);
+                              }}
+                            >
+                              Import People
+                            </button>
+                            <button
+                              className="action-button delete"
+                              onClick={() => handleDeleteOrg(org.orgId)} // Call delete function
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
-                      {activeDropdown === org._id && (
-                        <tr className="organization-table-row">
-                          <td className="organization-table-data" colSpan="2">
-                            <table className="people-table">
-                              <thead>
-                                <tr className="people-table-row">
-                                  <th className="people-table-header">Name</th>
-                                  <th className="people-table-header">Email</th>
-                                  <th className="people-table-header">
-                                    Actions
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {people.length > 0 ? (
-                                  people.map((person) => (
-                                    <tr
-                                      className="people-table-row"
-                                      key={person._id}
-                                    >
-                                      <td className="people-table-data">
-                                        {person.name}
-                                      </td>
-                                      <td className="people-table-data">
-                                        {person.email}
-                                      </td>
-                                      <td className="people-table-data">
-                                        <button
-                                          className="action-button modify"
-                                          onClick={() =>
-                                            handleModifyPerson(person)
-                                          }
-                                        >
-                                          <i className="fas fa-edit"></i> Modify
-                                        </button>
-                                        <button
-                                          className="action-button delete"
-                                          onClick={(e) =>
-                                            confirmDeletePerson(e, person)
-                                          }
-                                        >
-                                          <i className="fas fa-trash"></i>{" "}
-                                          Delete
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  ))
-                                ) : (
-                                  <tr className="people-table-row">
-                                    <td
-                                      className="people-table-data"
-                                      colSpan="3"
-                                    >
-                                      No people found in this organization.
-                                    </td>
-                                  </tr>
-                                )}
-                              </tbody>
-                            </table>
+                      {activeDropdown === org.orgId && (
+                        <tr className="organization-table-people-row">
+                          <td className="organization-table-people-data" colSpan="2">
+                            <PeopleTable people={people} />
                           </td>
                         </tr>
                       )}
                     </React.Fragment>
                   ))
                 ) : (
-                  <tr className="organization-table-row">
-                    <td className="organization-table-data" colSpan="2">
+                  <tr className="organization-table-empty-row">
+                    <td className="organization-table-empty-data" colSpan="2">
                       No organizations found.
                     </td>
                   </tr>
