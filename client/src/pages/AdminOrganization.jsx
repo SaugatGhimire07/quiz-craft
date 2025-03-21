@@ -155,17 +155,17 @@ const AdminOrganization = () => {
 
   const toggleDropdown = (orgId) => {
     if (activeDropdown === orgId) {
-      setActiveDropdown(null);
+      setActiveDropdown(null); // Close the dropdown if it's already active
     } else {
-      setActiveDropdown(orgId);
-      setSelectedOrg(orgId); // Ensure selectedOrg is set
-      handleSelectOrg(orgId);
+      setActiveDropdown(orgId); // Set the active dropdown to the selected orgId
+      setSelectedOrg(orgId); // Set the selected organization
+      fetchPeople(orgId); // Fetch people for the selected organization
     }
   };
 
   const ImportPeople = ({ orgId, onClose, onImport }) => {
     const [file, setFile] = useState(null);
-    const [error, setError] = useState(""); // State for error message
+    const [error, setError] = useState(""); 
   
     const handleFileChange = (e) => {
       setFile(e.target.files[0]);
@@ -367,6 +367,7 @@ const AdminOrganization = () => {
   const CreatePerson = () => {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
+    const [stdId, setStdId] = useState(""); // State for stdId
     const [error, setError] = useState(""); // State for error message
 
     const handleCreatePerson = async () => {
@@ -375,13 +376,17 @@ const AdminOrganization = () => {
         return;
       }
 
-      if (!name || !email) {
-        setError("Name and email are required.");
+      if (!name || !email || !stdId) {
+        setError("Student ID, Name, and Email are required.");
         return;
       }
 
       try {
-        const response = await api.post(`/organization/${selectedOrg}/people`, { name, email });
+        const response = await api.post(`/organization/${selectedOrg}/people`, {
+          name,
+          email,
+          stdId, // Include stdId in the request payload
+        });
         fetchPeople(selectedOrg);
         setShowCreatePerson(false);
         setError(""); // Clear error message on success
@@ -406,6 +411,15 @@ const AdminOrganization = () => {
       <div className="create-person-container">
         <h2>Create Person</h2>
         {error && <div className="error-message">{error}</div>} {/* Display error message */}
+        <div className="form-group">
+          <label htmlFor="stdId">Student ID</label>
+          <input
+            type="text"
+            id="stdId"
+            value={stdId}
+            onChange={(e) => setStdId(e.target.value)} // Handle stdId input
+          />
+        </div>
         <div className="form-group">
           <label htmlFor="name">Name</label>
           <input
@@ -480,6 +494,7 @@ const AdminOrganization = () => {
       <table className="people-table">
         <thead>
           <tr className="people-table-header-row">
+            <th className="people-table-header-data">Student ID</th>
             <th className="people-table-header-data">Name</th>
             <th className="people-table-header-data">Email</th>
             <th className="people-table-header-data">Actions</th>
@@ -488,7 +503,8 @@ const AdminOrganization = () => {
         <tbody>
           {people.length > 0 ? (
             people.map((person) => (
-              <tr className="people-table-data-row" key={person._id}>
+              <tr className="people-table-data-row" key={person.stdId}>
+                <td className="people-table-data-id">{person.stdId}</td>
                 <td className="people-table-data-name">{person.name}</td>
                 <td className="people-table-data-email">{person.email}</td>
                 <td className="people-table-data-actions">
@@ -511,7 +527,7 @@ const AdminOrganization = () => {
             ))
           ) : (
             <tr className="people-table-empty-row">
-              <td className="people-table-empty-data" colSpan="3">
+              <td className="people-table-empty-data" colSpan="4">
                 No people found in this organization.
               </td>
             </tr>
@@ -532,7 +548,6 @@ const AdminOrganization = () => {
             showBackButton={false}
             isAdmin={user?.isAdmin}
           />
-
           <div className="dashboard-content">
             <h1 className="dashboard-title">Organization</h1>
 
@@ -545,6 +560,8 @@ const AdminOrganization = () => {
             <table className="organization-table">
               <thead>
                 <tr className="organization-table-header-row">
+                  <th className="organization-table-header-data"></th> {/* Empty header for dropdown */}
+                  <th className="organization-table-header-data">Organization ID</th>
                   <th className="organization-table-header-data">Organization Name</th>
                   <th className="organization-table-header-data">Actions</th>
                 </tr>
@@ -552,7 +569,7 @@ const AdminOrganization = () => {
               <tbody>
                 {loading ? (
                   <tr className="organization-table-loading-row">
-                    <td className="organization-table-loading-data" colSpan="2">
+                    <td className="organization-table-loading-data" colSpan="3">
                       Loading organizations...
                     </td>
                   </tr>
@@ -560,15 +577,35 @@ const AdminOrganization = () => {
                   organizations.map((org) => (
                     <React.Fragment key={org.orgId || org._id}>
                       <tr className="organization-table-data-row">
-                        <td
-                          className="organization-table-data-name"
-                          onClick={() => toggleDropdown(org.orgId)}
-                        >
-                          {org.name}
-                          <button className="dropdown-arrow">
-                            {activeDropdown === org.orgId ? "▲" : "▼"}
+                        <td className="organization-table-data-dropdown">
+                          <button className="dropdown-arrow" onClick={() => toggleDropdown(org.orgId)}>
+                            {activeDropdown === org.orgId ? (
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                fill="currentColor"
+                                className="bi bi-caret-down-fill"
+                                viewBox="0 0 16 16"
+                              >
+                                <path d="M7.247 11.14 2.451 6.344c-.566-.566-.16-1.536.636-1.536h10.172c.796 0 1.202.97.636 1.536l-4.796 4.796a1 1 0 0 1-1.414 0z" />
+                              </svg>
+                            ) : (
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                fill="currentColor"
+                                className="bi bi-caret-right-fill"
+                                viewBox="0 0 16 16"
+                              >
+                                <path d="m12.14 8.247-4.796 4.796c-.566.566-1.536.16-1.536-.636V3.893c0-.796.97-1.202 1.536-.636l4.796 4.796a1 1 0 0 1 0 1.414z" />
+                              </svg>
+                            )}
                           </button>
                         </td>
+                        <td className="organization-table-data-id">{org.orgId}</td>
+                        <td className="organization-table-data-name">{org.name}</td>
                         <td className="organization-table-data-actions">
                           <div className="action-buttons-container">
                             <button
@@ -579,7 +616,7 @@ const AdminOrganization = () => {
                             </button>
                             <button
                               className="action-button add-person"
-                              onClick={() => handleCreatePerson(org.orgId)} 
+                              onClick={() => handleCreatePerson(org.orgId)}
                             >
                               Add Person
                             </button>
@@ -598,7 +635,7 @@ const AdminOrganization = () => {
                             </button>
                             <button
                               className="action-button delete"
-                              onClick={() => handleDeleteOrg(org.orgId)} // Call delete function
+                              onClick={() => handleDeleteOrg(org.orgId)}
                             >
                               Delete
                             </button>
@@ -607,7 +644,7 @@ const AdminOrganization = () => {
                       </tr>
                       {activeDropdown === org.orgId && (
                         <tr className="organization-table-people-row">
-                          <td className="organization-table-people-data" colSpan="2">
+                          <td className="organization-table-people-data" colSpan="4">
                             <PeopleTable people={people} />
                           </td>
                         </tr>
@@ -616,7 +653,7 @@ const AdminOrganization = () => {
                   ))
                 ) : (
                   <tr className="organization-table-empty-row">
-                    <td className="organization-table-empty-data" colSpan="2">
+                    <td className="organization-table-empty-data" colSpan="4">
                       No organizations found.
                     </td>
                   </tr>

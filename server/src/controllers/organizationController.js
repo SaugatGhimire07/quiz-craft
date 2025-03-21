@@ -73,11 +73,11 @@ export const getPeopleInOrganization = asyncHandler(async (req, res) => {
 // Add a person to an organization by orgId
 export const addPersonToOrganization = asyncHandler(async (req, res) => {
   const { orgId } = req.params;
-  const { name, email } = req.body;
+  const { name, email, stdId } = req.body; // Accept stdId from the request body
 
   // Validate required fields
-  if (!name || !email) {
-    return res.status(400).json({ error: "Name and email are required." });
+  if (!name || !email || !stdId) {
+    return res.status(400).json({ error: "Name, email, and stdId are required." });
   }
 
   // Validate email format
@@ -93,9 +93,15 @@ export const addPersonToOrganization = asyncHandler(async (req, res) => {
   }
 
   // Check for duplicate email
-  const existingPerson = await Person.findOne({ email });
-  if (existingPerson) {
+  const existingPersonByEmail = await Person.findOne({ email });
+  if (existingPersonByEmail) {
     return res.status(400).json({ error: "A person with this email already exists." });
+  }
+
+  // Check for duplicate stdId
+  const existingPersonByStdId = await Person.findOne({ stdId });
+  if (existingPersonByStdId) {
+    return res.status(400).json({ error: "A person with this stdId already exists." });
   }
 
   // Generate a random password and hash it
@@ -104,6 +110,7 @@ export const addPersonToOrganization = asyncHandler(async (req, res) => {
 
   // Create the person
   const person = new Person({
+    stdId,
     name,
     email,
     password: hashedPassword,
@@ -112,8 +119,13 @@ export const addPersonToOrganization = asyncHandler(async (req, res) => {
 
   await person.save();
 
-  // Return only the created person
-  res.status(201).json(person);
+  // Return the created person
+  res.status(201).json({
+    stdId: person.stdId,
+    name: person.name,
+    email: person.email,
+    organization: person.organization,
+  });
 });
 
 // Import people to an organization by orgId
@@ -154,11 +166,11 @@ export const importPeopleToOrganization = asyncHandler(async (req, res) => {
     const errors = [];
 
     for (const [index, row] of data.entries()) {
-      const { name, email } = row;
+      const { stdId, name, email } = row;
 
       // Validate required fields
-      if (!name || !email) {
-        errors.push({ row: index + 1, error: "Name and email are required." });
+      if (!stdId || !name || !email) {
+        errors.push({ row: index + 1, error: "stdId, name, and email are required." });
         continue;
       }
 
@@ -169,9 +181,16 @@ export const importPeopleToOrganization = asyncHandler(async (req, res) => {
         continue;
       }
 
+      // Check for duplicate stdId
+      const existingPersonByStdId = await Person.findOne({ stdId });
+      if (existingPersonByStdId) {
+        errors.push({ row: index + 1, error: `Duplicate stdId: ${stdId}` });
+        continue;
+      }
+
       // Check for duplicate email
-      const existingPerson = await Person.findOne({ email });
-      if (existingPerson) {
+      const existingPersonByEmail = await Person.findOne({ email });
+      if (existingPersonByEmail) {
         errors.push({ row: index + 1, error: `Duplicate email: ${email}` });
         continue;
       }
@@ -181,6 +200,7 @@ export const importPeopleToOrganization = asyncHandler(async (req, res) => {
       const hashedPassword = await bcrypt.hash(password, 10);
 
       const person = new Person({
+        stdId,
         name,
         email,
         password: hashedPassword,
