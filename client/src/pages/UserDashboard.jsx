@@ -20,10 +20,15 @@ const UserDashboard = () => {
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [quizToDelete, setQuizToDelete] = useState(null);
 
-  // Function to fetch user's quizzes
-  const fetchQuizzes = async () => {
+  // Update the fetchQuizzes function
+  const fetchQuizzes = async (forceRefresh = false) => {
     try {
-      const response = await api.get("/quiz/user");
+      setLoading(true);
+
+      // Add cache-busting parameter when we want to force refresh
+      const endpoint = forceRefresh ? "/quiz/user?refresh=true" : "/quiz/user";
+
+      const response = await api.get(endpoint);
       setQuizzes(response.data);
     } catch (error) {
       console.error("Error fetching quizzes:", error);
@@ -84,7 +89,7 @@ const UserDashboard = () => {
     setActiveDropdown(activeDropdown === index ? null : index);
   };
 
-  // Function to make quiz live
+  // Update the handleMakeQuizLive function
   const handleMakeQuizLive = async (e, quizId) => {
     e.stopPropagation(); // Prevent card click
     try {
@@ -105,8 +110,7 @@ const UserDashboard = () => {
         },
       });
 
-      // Refresh quizzes after update
-      fetchQuizzes();
+      // No need to fetch again as we're navigating away
       setActiveDropdown(null);
     } catch (error) {
       console.error("Error making quiz live:", error);
@@ -121,7 +125,7 @@ const UserDashboard = () => {
     setActiveDropdown(null);
   };
 
-  // Handle deleting a quiz
+  // Then update the handleDeleteQuiz function
   const handleDeleteQuiz = async () => {
     if (!quizToDelete) return;
 
@@ -129,8 +133,14 @@ const UserDashboard = () => {
       await api.delete(`/quiz/${quizToDelete._id}`);
       // Remove quiz from state
       setQuizzes(quizzes.filter((quiz) => quiz._id !== quizToDelete._id));
+      setShowDeleteConfirmation(false);
+
+      // No need to re-fetch - we've already updated the state
+      // and the server has invalidated the cache
     } catch (error) {
       console.error("Error deleting quiz:", error);
+      // On error, refresh to get the current state
+      fetchQuizzes(true);
     }
   };
 

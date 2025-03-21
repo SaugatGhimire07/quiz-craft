@@ -16,6 +16,7 @@ import quizRoutes from "./routes/quizRoutes.js";
 import playersRoutes from "./routes/playersRoutes.js";
 import imageRoutes from "./routes/imageRoutes.js";
 import PlayerScore from "./models/PlayerScore.js";
+import redisClient from "./utils/redisClient.js";
 
 // Get __dirname equivalent in ES module
 const __filename = fileURLToPath(import.meta.url);
@@ -503,6 +504,27 @@ connectDB()
     });
   })
   .catch((err) => console.error("MongoDB connection error:", err));
+
+// Add a graceful shutdown handler
+const gracefulShutdown = async () => {
+  console.log("Shutting down server...");
+
+  // Close Redis connection
+  if (redisClient.isOpen) {
+    await redisClient.quit();
+    console.log("Redis connection closed");
+  }
+
+  // Close other connections
+  mongoose.connection.close(() => {
+    console.log("MongoDB connection closed");
+    process.exit(0);
+  });
+};
+
+// Handle process termination
+process.on("SIGTERM", gracefulShutdown);
+process.on("SIGINT", gracefulShutdown);
 
 // Export io instance for use in other files
 export { io };

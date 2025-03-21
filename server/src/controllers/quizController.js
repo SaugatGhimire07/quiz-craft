@@ -8,7 +8,8 @@ import { nanoid } from "nanoid";
 import { emitParticipantJoined } from "../utils/socketEvents.js";
 import { customAlphabet } from "nanoid";
 import { fileURLToPath } from "url";
-import PlayerScore from "../models/PlayerScore.js"; // Make sure to import this
+import PlayerScore from "../models/PlayerScore.js";
+import redisClient from "../utils/redisClient.js";
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -55,9 +56,9 @@ export const getImage = async (req, res) => {
 };
 
 export const createQuiz = async (req, res) => {
-  const { title, questions } = req.body;
-
   try {
+    const { title, questions } = req.body;
+
     if (!title || !questions || !questions.length) {
       return res
         .status(400)
@@ -72,6 +73,10 @@ export const createQuiz = async (req, res) => {
     });
 
     const savedQuiz = await newQuiz.save();
+
+    // Invalidate cache
+    await redisClient.del(`user:${req.user._id}:quizzes`);
+
     res.status(201).json(savedQuiz);
   } catch (error) {
     res
@@ -82,11 +87,29 @@ export const createQuiz = async (req, res) => {
 
 export const getUserQuizzes = async (req, res) => {
   try {
-    const quizzes = await Quiz.find({ createdBy: req.user._id }).sort({
+    const userId = req.user._id.toString();
+    const cacheKey = `user:${userId}:quizzes`;
+
+    // Try to get data from cache first
+    const cachedQuizzes = await redisClient.get(cacheKey);
+
+    if (cachedQuizzes) {
+      console.log("Returning quizzes from cache");
+      return res.json(JSON.parse(cachedQuizzes));
+    }
+
+    // If not in cache, fetch from database
+    console.log("Fetching quizzes from database");
+    const quizzes = await Quiz.find({ createdBy: userId }).sort({
       createdAt: -1,
     });
+
+    // Store in cache for 10 minutes (600 seconds)
+    await redisClient.setEx(cacheKey, 600, JSON.stringify(quizzes));
+
     res.json(quizzes);
   } catch (error) {
+    console.error("Failed to fetch quizzes:", error);
     res
       .status(500)
       .json({ message: "Failed to fetch quizzes", error: error.message });
@@ -153,6 +176,9 @@ export const updateQuiz = async (req, res) => {
       });
     }
 
+    // Invalidate cache
+    await redisClient.del(`user:${req.user._id}:quizzes`);
+
     res.json(updatedQuiz);
   } catch (error) {
     console.error("Error updating quiz:", error);
@@ -207,6 +233,9 @@ export const deleteQuiz = async (req, res) => {
 
     // Delete the quiz
     await Quiz.findByIdAndDelete(quizId);
+
+    // Invalidate cache
+    await redisClient.del(`user:${req.user._id}:quizzes`);
 
     // Return success response
     res.status(200).json({ message: "Quiz deleted successfully" });
