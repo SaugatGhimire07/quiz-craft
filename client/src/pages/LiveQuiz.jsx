@@ -226,6 +226,7 @@ const LiveQuiz = () => {
           pin: location.state.gamePin,
           playerName: location.state?.playerName || "Anonymous",
           playerId: location.state?.playerId,
+          stableId: location.state?.stableId || location.state?.playerId, // Include stableId
           isHost: false,
           userId: user?._id,
         });
@@ -249,6 +250,7 @@ const LiveQuiz = () => {
           pin: location.state.gamePin,
           playerName: location.state?.playerName || "Anonymous",
           playerId: location.state?.playerId,
+          stableId: location.state?.stableId || location.state?.playerId, // Include stableId
           isHost: false,
           userId: user?._id,
         });
@@ -575,6 +577,7 @@ const LiveQuiz = () => {
           quizId,
           sessionId: location.state?.sessionId,
           playerId: location.state.playerId,
+          stableId: location.state?.stableId || location.state?.playerId,
           totalScore: finalScore,
         });
       } else {
@@ -632,6 +635,7 @@ const LiveQuiz = () => {
             quizId,
             questionId: currentQuestion._id,
             playerId: location.state.playerId,
+            stableId: location.state?.stableId || location.state?.playerId,
             answer: option,
             isCorrect: true,
             timeTaken,

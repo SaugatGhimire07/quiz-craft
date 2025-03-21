@@ -6,60 +6,104 @@ const playerSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    quizId: {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Quiz",
-      required: true,
+      ref: "User",
+      // Not required - anonymous players are allowed
+    },
+    // A unique identifier for anonymous players (e.g., browser fingerprint)
+    anonymousId: {
+      type: String,
+    },
+    // Store a stable identifier that persists across sessions
+    stableId: {
+      type: String,
+      // This will be either userId or anonymousId, set via pre-save hook
     },
     sessionId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "QuizSession",
       required: true,
     },
+    quizId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Quiz",
+      required: true,
+    },
     isHost: {
       type: Boolean,
       default: false,
-    },
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      default: null,
-    },
-    isConnected: {
-      type: Boolean,
-      default: true,
-    },
-    socketId: {
-      type: String,
-      default: null,
-    },
-    avatarSeed: {
-      type: String,
-      default: function () {
-        return this.name?.toLowerCase().replace(/[^a-z0-9]/g, "") || "";
-      },
     },
     role: {
       type: String,
       enum: ["host", "participant"],
       default: "participant",
     },
+    avatarSeed: String,
+    isConnected: {
+      type: Boolean,
+      default: true,
+    },
+    socketId: String,
+    lastActive: {
+      type: Date,
+      default: Date.now,
+    },
   },
   { timestamps: true }
 );
 
-// Add a pre-save hook for debugging
+// Pre-save hook to set the stableId
 playerSchema.pre("save", function (next) {
-  console.log(
-    `Saving player: ${this.name}, isConnected: ${this.isConnected}, sessionId: ${this.sessionId}`
-  );
+  // Use userId if available, otherwise use anonymousId
+  if (!this.stableId) {
+    this.stableId = this.userId ? this.userId.toString() : this.anonymousId;
+  }
   next();
 });
 
-playerSchema.pre("findOneAndUpdate", function (next) {
-  console.log("Updating player:", this.getUpdate());
-  next();
-});
+// Add a method to find or create player
+playerSchema.statics.findOrCreate = async function (playerData) {
+  // Determine which stable ID to use
+  const stableId = playerData.userId || playerData.anonymousId;
+
+  if (!stableId) {
+    throw new Error("Either userId or anonymousId must be provided");
+  }
+
+  // Try to find an existing player for this session
+  let player = await this.findOne({
+    stableId,
+    quizId: playerData.quizId,
+    sessionId: playerData.sessionId,
+  });
+
+  // If player exists, update their connection status
+  if (player) {
+    player.isConnected = true;
+    player.socketId = playerData.socketId;
+    player.lastActive = Date.now();
+    await player.save();
+    return player;
+  }
+
+  // Otherwise create a new player
+  player = new this({
+    name: playerData.name,
+    userId: playerData.userId,
+    anonymousId: playerData.anonymousId,
+    quizId: playerData.quizId,
+    sessionId: playerData.sessionId,
+    avatarSeed: playerData.avatarSeed,
+    isHost: playerData.isHost || false,
+    role: playerData.role || "participant",
+    socketId: playerData.socketId,
+    isConnected: true,
+  });
+
+  await player.save();
+  return player;
+};
 
 const Player = mongoose.model("Player", playerSchema);
 

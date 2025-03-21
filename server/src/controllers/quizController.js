@@ -275,6 +275,12 @@ export const endQuiz = async (req, res) => {
             socketId: null,
           }
         );
+
+        // Optionally archive players if you want to keep history but clean up DB
+        // This approach is better than deleting players, as it preserves history
+        // However, for your use case, simply setting isConnected: false may be enough
+
+        console.log(`Quiz ${quizId} ended and session ${sessionId} closed`);
       }
     }
 
@@ -456,7 +462,7 @@ export const startQuizSession = async (req, res) => {
 
 export const joinQuizSession = async (req, res) => {
   try {
-    const { pin, playerName, userId } = req.body;
+    const { pin, playerName, userId, anonymousId } = req.body;
 
     // Validate request body
     if (!pin || !playerName) {
@@ -492,23 +498,28 @@ export const joinQuizSession = async (req, res) => {
       });
     }
 
-    // Create new player
-    const player = new Player({
+    // Now use the findOrCreate method to get a player
+    const avatarSeed = playerName.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    // If neither userId nor anonymousId is provided, create a random ID
+    const playerAnonymousId = anonymousId || nanoid(12);
+
+    const player = await Player.findOrCreate({
       name: playerName,
+      userId: userId || null,
+      anonymousId: userId ? null : playerAnonymousId, // Only use anonymousId for non-logged in users
       sessionId: session._id,
       quizId: quiz._id,
-      userId: userId || null,
-      avatarSeed: playerName.toLowerCase().replace(/[^a-z0-9]/g, ""),
-      isConnected: true,
+      avatarSeed: avatarSeed,
       role: "participant",
     });
-    await player.save();
 
     res.status(201).json({
       quizId: quiz._id,
       sessionId: session._id,
       player: {
         id: player._id,
+        stableId: player.stableId, // Include this for client-side tracking
         name: player.name,
         avatarSeed: player.avatarSeed,
         role: "participant",

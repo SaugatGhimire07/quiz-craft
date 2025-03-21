@@ -172,56 +172,32 @@ io.on("connection", (socket) => {
 
   socket.on(
     "joinQuizRoom",
-    async ({ pin, playerName, playerId, isHost, userId }) => {
-      if (!pin) return;
+    async ({ pin, playerName, playerId, stableId, isHost, userId }) => {
+      try {
+        console.log(
+          `Player ${playerName} (${playerId}) joined room with PIN ${pin}`
+        );
+        socket.join(pin);
 
-      console.log(
-        `${isHost ? "Host" : "Player"} ${playerName} joining room ${pin}`
-      );
-
-      // Join the socket room
-      socket.join(pin);
-
-      // Generate a deterministic avatar seed based on player details
-      const avatarSeed = `${playerName
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, "")}${Date.now()}`;
-
-      // Update player connection status in database for participants
-      if (!isHost && playerId) {
-        try {
-          const player = await Player.findByIdAndUpdate(
-            playerId,
-            {
-              isConnected: true,
-              socketId: socket.id,
-              avatarSeed: avatarSeed,
-            },
-            { new: true }
-          );
-
-          if (player) {
-            console.log(`Updated player ${playerId} connection status to true`);
-
-            // Broadcast to everyone in the room that a participant joined
-            io.to(pin).emit("participantJoined", {
-              id: playerId,
-              name: playerName,
-              userId,
-              avatarSeed,
-              role: "participant",
-            });
-          }
-        } catch (error) {
-          console.error(`Error updating player ${playerId}:`, error);
+        // Update the player's socketId
+        if (playerId) {
+          await Player.findByIdAndUpdate(playerId, {
+            socketId: socket.id,
+            isConnected: true,
+            lastActive: new Date(),
+          });
         }
-      } else if (isHost) {
-        // For hosts, we'll just notify that they joined but not store in player DB
-        // If we do need to track hosts in the DB, add that code here
-        socket.emit("hostJoined", {
-          success: true,
-          pin,
-        });
+
+        // Emit to the room that a participant joined
+        if (!isHost) {
+          io.to(pin).emit("participantJoined", {
+            playerId,
+            playerName,
+            stableId: stableId, // Include stableId in events
+          });
+        }
+      } catch (error) {
+        console.error("Error joining quiz room:", error);
       }
     }
   );
@@ -285,13 +261,13 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Find the socket.on("submitAnswer") handler and update it:
   socket.on(
     "submitAnswer",
     async ({
       quizId,
       questionId,
       playerId,
+      stableId, // Add this parameter
       answer,
       isCorrect,
       timeTaken,
@@ -299,35 +275,46 @@ io.on("connection", (socket) => {
     }) => {
       try {
         console.log(
-          `Player ${playerId} submitted answer for ${questionId}: ${answer}, correct: ${isCorrect}, score: ${score}`
+          `Player ${playerId} submitted answer for question ${questionId}`
         );
 
-        // Find the active session
+        // Find the session
         const session = await QuizSession.findOne({ quizId, isActive: true });
 
         if (!session) {
-          console.error(`No active session found for quiz ${quizId}`);
-          return;
+          return socket.emit("answerError", { message: "No active session" });
         }
 
-        // Find or create player score record
+        // Find the player - first try by ID, then by stableId if provided
+        let player;
+        if (playerId) {
+          player = await Player.findById(playerId);
+        } else if (stableId) {
+          player = await Player.findOne({ stableId, sessionId: session._id });
+        }
+
+        if (!player) {
+          return socket.emit("answerError", { message: "Player not found" });
+        }
+
+        // Find or create PlayerScore record
         let playerScore = await PlayerScore.findOne({
           quizId,
-          playerId,
+          playerId: player._id,
           sessionId: session._id,
         });
 
         if (!playerScore) {
           playerScore = new PlayerScore({
             quizId,
-            playerId,
+            playerId: player._id,
             sessionId: session._id,
             answers: [],
             totalScore: 0,
           });
         }
 
-        // Add this answer to the player's answers array
+        // Process the answer as before
         playerScore.answers.push({
           questionId,
           answer,
@@ -336,27 +323,22 @@ io.on("connection", (socket) => {
           score: isCorrect ? score || 0 : 0,
         });
 
-        // Update total score
         if (isCorrect && score) {
           playerScore.totalScore += score;
-          console.log(
-            `Added ${score} points to player ${playerId}. New total: ${playerScore.totalScore}`
-          );
         }
 
-        // Save the updated player score
         await playerScore.save();
 
-        // Send acknowledgment back to the client
         socket.emit("answerReceived", {
+          success: true,
           questionId,
+          playerId: player._id,
           isCorrect,
           score: isCorrect ? score : 0,
         });
       } catch (error) {
-        console.error("Error handling answer submission:", error);
-        // Send error message to client
-        socket.emit("answerError", { message: "Failed to save answer" });
+        console.error("Error handling answer:", error);
+        socket.emit("answerError", { message: "Failed to process answer" });
       }
     }
   );
