@@ -35,6 +35,7 @@ const LoginPage = () => {
           name: response.data.name,
           email: response.data.email,
           isVerified: response.data.isVerified,
+          isAdmin: response.data.isAdmin,
         });
 
         // Check for redirect from previous navigation attempt

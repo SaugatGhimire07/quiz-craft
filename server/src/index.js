@@ -17,6 +17,7 @@ import playersRoutes from "./routes/playersRoutes.js";
 import imageRoutes from "./routes/imageRoutes.js";
 import PlayerScore from "./models/PlayerScore.js";
 import redisClient from "./utils/redisClient.js";
+import organizationRoutes from "./routes/organizationRoutes.js";
 
 // Get __dirname equivalent in ES module
 const __filename = fileURLToPath(import.meta.url);
@@ -485,6 +486,8 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
 
+const mongoURI = process.env.MONGODB_URI || "mongodb://localhost:27017/quizcraft";
+
 // Routes
 app.use("/api/quiz", quizRoutes);
 app.use("/api/auth", authRoutes);
@@ -492,6 +495,7 @@ app.use("/api/players", playersRoutes);
 app.use("/api", contactRoutes);
 app.use("/api/images", imageRoutes);
 app.get("/", (req, res) => res.send("API is running..."));
+app.use("/api", organizationRoutes);
 
 // Modified server startup
 const PORT = process.env.PORT || 5001;

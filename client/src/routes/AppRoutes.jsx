@@ -17,6 +17,7 @@ import UserDashboard from "../pages/UserDashboard";
 import CreateQuiz from "../pages/CreateQuiz";
 import WaitingRoom from "../pages/WaitingRoom";
 import LiveQuiz from "../pages/LiveQuiz"; // Import LiveQuiz component
+import AdminOrganization from "../pages/AdminOrganization";
 
 const AppRoutes = () => {
   return (
@@ -35,25 +36,25 @@ const AppRoutes = () => {
         <Route
           path="/verify-email"
           element={
-            <ProtectedRoute allowedStates={["email"]}>
-              <VerifyEmail />
-            </ProtectedRoute>
+            // <ProtectedRoute allowedStates={["email"]}>
+            <VerifyEmail />
+            // </ProtectedRoute>
           }
         />
         <Route
           path="/verify-code"
           element={
-            <ProtectedRoute allowedStates={["email"]}>
-              <VerifyCode />
-            </ProtectedRoute>
+            // <ProtectedRoute allowedStates={["email"]}>
+            <VerifyCode />
+            //  </ProtectedRoute>
           }
         />
         <Route
           path="/new-password/:token"
           element={
-            <ProtectedRoute allowedStates={["resetToken"]}>
-              <NewPassword />
-            </ProtectedRoute>
+            // <ProtectedRoute allowedStates={["resetToken"]}>
+            <NewPassword />
+            // </ProtectedRoute>
           }
         />
         <Route
@@ -103,6 +104,15 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute requireAuth={true}>
               <LiveQuiz />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/adminorganization"
+          element={
+            <ProtectedRoute requireAuth={true}>
+              <AdminOrganization />
             </ProtectedRoute>
           }
         />
