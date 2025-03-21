@@ -768,6 +768,22 @@ export const getQuizResults = async (req, res) => {
 
     console.log(`Found ${playerScores.length} player scores`);
 
+    // Debug information for each player score
+    playerScores.forEach((score) => {
+      console.log(
+        `Player ${score.playerId?.name || "Unknown"}: Score ${
+          score.totalScore
+        }, Completed: ${score.completed}, Answers: ${score.answers.length}`
+      );
+      score.answers.forEach((ans, idx) => {
+        console.log(
+          `  Answer ${idx + 1}: Correct: ${ans.isCorrect}, Points: ${
+            ans.score || 0
+          }`
+        );
+      });
+    });
+
     // If no scores yet, try to get total questions count for the quiz
     const quiz = await Quiz.findById(quizId);
     const totalQuestions = quiz?.questions?.length || 0;
@@ -790,10 +806,22 @@ export const getQuizResults = async (req, res) => {
         (answer) => answer.isCorrect
       ).length;
 
+      // Recalculate total score if it's showing as 0 but there are correct answers
+      let finalScore = score.totalScore || 0;
+      if (finalScore === 0 && correctAnswers > 0) {
+        finalScore = score.answers.reduce(
+          (sum, a) => sum + (a.isCorrect ? a.score || 0 : 0),
+          0
+        );
+        console.log(
+          `Recalculated score for ${score.playerId?.name}: ${finalScore}`
+        );
+      }
+
       results.push({
         playerId: score.playerId?._id || score.playerId,
         playerName: score.playerId?.name || "Anonymous",
-        score: score.totalScore || 0,
+        score: finalScore,
         correctAnswers,
         totalQuestions,
       });
@@ -822,6 +850,7 @@ export const getQuizResults = async (req, res) => {
     // Sort by score (highest first)
     results.sort((a, b) => b.score - a.score);
 
+    console.log("Sending results:", results);
     res.json(results);
   } catch (error) {
     console.error("Error fetching quiz results:", error);

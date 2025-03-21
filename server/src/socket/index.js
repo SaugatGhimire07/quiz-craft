@@ -69,27 +69,132 @@ io.on("connection", (socket) => {
     }
   });
 
-  // This would be in your server-side socket.io code
-  socket.on("quizComplete", async ({ quizId, sessionId, playerId }) => {
-    try {
-      // Record this player as completed
-      // ...your logic to record player completion...
+  // Add or update this socket.on handler in server/src/index.js
+  socket.on(
+    "quizComplete",
+    async ({ quizId, sessionId, playerId, totalScore }) => {
+      try {
+        console.log(
+          `Player ${playerId} completed quiz ${quizId} with score ${totalScore}`
+        );
 
-      // Check if all players have completed
-      const session = await QuizSession.findById(sessionId);
-      const completedPlayers = await PlayerScore.countDocuments({
-        sessionId,
-        completed: true,
-      });
+        // Find the session
+        const session = await QuizSession.findOne({
+          $or: [{ _id: sessionId }, { quizId, isActive: true }],
+        });
 
-      if (session && completedPlayers >= session.players.length) {
-        // All players have completed, emit the showResults event
-        io.to(session.pin).emit("showResults", { quizId, sessionId });
+        if (!session) {
+          console.error(`No session found for quiz ${quizId}`);
+          return;
+        }
+
+        // Find the player
+        const player = await Player.findById(playerId);
+        if (!player) {
+          console.error(`Player ${playerId} not found`);
+          return;
+        }
+
+        console.log(`Found player ${player.name} in session ${session._id}`);
+
+        // Find or create player score record
+        const playerScore = await PlayerScore.findOneAndUpdate(
+          {
+            quizId,
+            playerId,
+            sessionId: session._id,
+          },
+          {
+            $set: {
+              completed: true,
+              totalScore: totalScore || 0,
+            },
+          },
+          { upsert: true, new: true }
+        );
+
+        console.log(
+          `Updated player score record: ${playerScore._id}, score: ${playerScore.totalScore}`
+        );
+
+        // Count total players vs completed players
+        const totalPlayers = await Player.countDocuments({
+          sessionId: session._id,
+          isHost: { $ne: true }, // Exclude hosts
+        });
+
+        const completedCount = await PlayerScore.countDocuments({
+          sessionId: session._id,
+          completed: true,
+        });
+
+        console.log(
+          `${completedCount} out of ${totalPlayers} players have completed the quiz`
+        );
+
+        // Special case for single participant - always mark as complete
+        if (totalPlayers === 1 && completedCount === 1) {
+          console.log(
+            "Single participant has completed the quiz, showing results"
+          );
+
+          // Mark session as all completed
+          await QuizSession.findByIdAndUpdate(session._id, {
+            $set: { allCompleted: true },
+          });
+
+          // Emit to the room
+          io.to(session.pin).emit("showResults", {
+            quizId,
+            sessionId: session._id,
+            allParticipantsFinished: true,
+          });
+
+          // Also emit separate event as a backup
+          io.to(session.pin).emit("allParticipantsFinished", {
+            quizId,
+            sessionId: session._id,
+          });
+          return;
+        }
+
+        // Regular logic for multiple participants
+        if (completedCount >= totalPlayers && totalPlayers > 0) {
+          console.log(
+            `All ${totalPlayers} players have completed! Showing results to everyone`
+          );
+
+          // Mark session as all completed
+          await QuizSession.findByIdAndUpdate(session._id, {
+            $set: { allCompleted: true },
+          });
+
+          // Emit to the room
+          io.to(session.pin).emit("showResults", {
+            quizId,
+            sessionId: session._id,
+            allParticipantsFinished: true,
+          });
+
+          // Also emit separate event as a backup
+          io.to(session.pin).emit("allParticipantsFinished", {
+            quizId,
+            sessionId: session._id,
+          });
+        } else {
+          // This participant is done, but still waiting for others
+          // Send a personal showResults event just to this participant
+          socket.emit("showResults", {
+            quizId,
+            sessionId: session._id,
+            allParticipantsFinished: false,
+          });
+        }
+      } catch (error) {
+        console.error("Error handling quiz completion:", error);
       }
-    } catch (error) {
-      console.error("Error handling quiz completion:", error);
     }
-  });
+  );
 
   // Clean up on disconnect
   socket.on("disconnect", () => {

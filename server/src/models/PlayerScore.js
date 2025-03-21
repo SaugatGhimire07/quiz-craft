@@ -2,24 +2,20 @@ import mongoose from "mongoose";
 
 const playerScoreSchema = new mongoose.Schema(
   {
-    playerId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Player",
-      required: true,
-    },
     quizId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Quiz",
+      required: true,
+    },
+    playerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Player",
       required: true,
     },
     sessionId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "QuizSession",
       required: true,
-    },
-    totalScore: {
-      type: Number,
-      default: 0,
     },
     answers: [
       {
@@ -30,6 +26,14 @@ const playerScoreSchema = new mongoose.Schema(
         score: Number,
       },
     ],
+    totalScore: {
+      type: Number,
+      default: 0,
+    },
+    completed: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

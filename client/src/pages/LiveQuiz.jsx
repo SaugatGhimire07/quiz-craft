@@ -28,6 +28,8 @@ const LiveQuiz = () => {
   const [totalQuestions, setTotalQuestions] = useState(0);
   const [liveLeaderboard, setLiveLeaderboard] = useState([]);
   const [allParticipantsFinished, setAllParticipantsFinished] = useState(false);
+  const [socketReady, setSocketReady] = useState(false);
+  const [localScores, setLocalScores] = useState({});
 
   // When the component mounts, explicitly reset these values
   useEffect(() => {
@@ -205,59 +207,91 @@ const LiveQuiz = () => {
     console.log("LiveQuiz - Setting up socket listeners");
     console.log("LiveQuiz - Socket ID:", socket.id);
     console.log("LiveQuiz - Socket connected:", socket.connected);
-    console.log("LiveQuiz - Location state:", location.state);
 
-    // Join the quiz room immediately if gamePin is available
-    if (socket.connected && location.state?.gamePin) {
-      console.log("LiveQuiz - Joining room with PIN:", location.state.gamePin);
-      socket.emit("joinQuizRoom", {
-        pin: location.state.gamePin,
-        playerName: location.state?.playerName || "Anonymous",
-        playerId: location.state?.playerId,
-        isHost: false,
-        userId: user?._id,
-      });
+    // If socket isn't connected, try to connect it
+    if (!socket.connected) {
+      console.log("Socket not connected, attempting to connect...");
+      socket.connect();
     }
 
-    const handleQuizStarted = ({ pin, quizId: startedQuizId, sessionId }) => {
-      console.log("LiveQuiz - Quiz started event received:", {
-        pin,
-        startedQuizId,
-        sessionId,
-      });
-      console.log("LiveQuiz - Current quiz ID:", quizId);
+    // Add a connection event handler
+    const handleConnect = () => {
+      console.log("Socket connected successfully!");
+      setSocketReady(true);
 
-      // Fetch quiz data
-      const fetchQuizData = async () => {
-        try {
-          console.log("LiveQuiz - Fetching quiz data");
-          const response = await api.get(`/quiz/${quizId}`);
-          console.log(
-            "LiveQuiz - Quiz data fetched:",
-            response.data.questions.length,
-            "questions"
-          );
-
-          setQuestions(response.data.questions);
-          if (response.data.questions.length > 0) {
-            setTimer(response.data.questions[0].timer);
-          }
-          setIsLoading(false);
-        } catch (error) {
-          console.error("Error fetching quiz:", error);
-          setIsLoading(false);
-        }
-      };
-
-      fetchQuizData();
+      // Join the quiz room after connection
+      if (location.state?.gamePin) {
+        console.log("Joining room with PIN:", location.state.gamePin);
+        socket.emit("joinQuizRoom", {
+          pin: location.state.gamePin,
+          playerName: location.state?.playerName || "Anonymous",
+          playerId: location.state?.playerId,
+          isHost: false,
+          userId: user?._id,
+        });
+      }
     };
 
-    socket.on("quizStarted", handleQuizStarted);
+    // Listen for connection
+    socket.on("connect", handleConnect);
 
+    // If already connected, mark as ready
+    if (socket.connected) {
+      setSocketReady(true);
+
+      // Join the quiz room immediately if gamePin is available
+      if (location.state?.gamePin) {
+        console.log(
+          "LiveQuiz - Already connected, joining room with PIN:",
+          location.state.gamePin
+        );
+        socket.emit("joinQuizRoom", {
+          pin: location.state.gamePin,
+          playerName: location.state?.playerName || "Anonymous",
+          playerId: location.state?.playerId,
+          isHost: false,
+          userId: user?._id,
+        });
+      }
+    }
+
+    // Rest of your existing socket event listeners...
+
+    // Add cleanup
     return () => {
-      socket.off("quizStarted", handleQuizStarted);
+      socket.off("connect", handleConnect);
+      // Other cleanup...
     };
   }, [socket, quizId, location.state, user]);
+
+  // Add this effect to monitor socket connection state
+  useEffect(() => {
+    if (!socket || quizComplete) return;
+
+    // Check socket connection status periodically
+    const checkInterval = setInterval(() => {
+      if (!socket.connected && location.state?.gamePin) {
+        console.log("Socket disconnected, attempting to reconnect...");
+        socket.connect();
+
+        // Try to rejoin room after short delay
+        setTimeout(() => {
+          if (socket.connected && location.state?.playerId) {
+            console.log("Reconnected, rejoining room");
+            socket.emit("joinQuizRoom", {
+              pin: location.state.gamePin,
+              playerName: location.state?.playerName || "Anonymous",
+              playerId: location.state?.playerId,
+              isHost: false,
+              userId: user?._id,
+            });
+          }
+        }, 500);
+      }
+    }, 5000); // Check every 5 seconds
+
+    return () => clearInterval(checkInterval);
+  }, [socket, quizComplete, location.state, user]);
 
   const fetchLeaderboard = useCallback(
     async (shouldUpdateUI = true) => {
@@ -531,12 +565,17 @@ const LiveQuiz = () => {
     }
   };
 
+  // Update your handleOptionSelect function
   const handleOptionSelect = (option) => {
+    // Don't allow selection if already selected
+    if (selectedOption !== null) {
+      return;
+    }
+
     const isAnswerCorrect = option === currentQuestion.correctOption;
     setSelectedOption(option);
     setIsCorrect(isAnswerCorrect);
 
-    // Calculate score based on correctness and time
     if (isAnswerCorrect) {
       const maxTime = currentQuestion.timer;
       const timeTaken = (Date.now() - questionStartTime) / 1000;
@@ -545,11 +584,27 @@ const LiveQuiz = () => {
 
       const questionScore = 100 + Math.round(timeBonus * speedMultiplier);
 
+      console.log(
+        `Calculated score: ${questionScore} for question ${currentQuestion._id}`
+      );
+
       // Update total score
       setScore((prevScore) => prevScore + questionScore);
 
-      // Send score to server if connected to socket
-      if (socket?.connected && location.state?.playerId) {
+      // Try using isConnected from context instead
+      const canSendScore =
+        (socket?.connected || isConnected) && location.state?.playerId;
+
+      // Always track score locally as a fallback
+      setLocalScores((prev) => ({
+        ...prev,
+        [currentQuestion._id]: questionScore,
+      }));
+
+      if (canSendScore) {
+        console.log(
+          `Sending score ${questionScore} to server for player ${location.state.playerId}`
+        );
         socket.emit("submitAnswer", {
           quizId,
           questionId: currentQuestion._id,
@@ -557,41 +612,71 @@ const LiveQuiz = () => {
           answer: option,
           isCorrect: true,
           timeTaken,
-          score: questionScore, // Make sure this is included
+          score: questionScore,
         });
-      }
-    } else {
-      // Wrong answer - no points
-      if (socket?.connected && location.state?.playerId) {
-        socket.emit("submitAnswer", {
-          quizId,
-          questionId: currentQuestion._id,
-          playerId: location.state.playerId,
-          answer: option,
-          isCorrect: false,
-          timeTaken: (Date.now() - questionStartTime) / 1000,
-        });
+      } else {
+        console.warn("Socket connection issue - caching score locally");
+        // Could add local storage caching here if needed
       }
     }
 
-    // Fetch updated leaderboard in the background (don't update UI yet)
-    setTimeout(async () => {
-      try {
-        const updatedLeaderboard = await fetchLeaderboard(false);
-        setLiveLeaderboard(updatedLeaderboard);
-        console.log("Updated live leaderboard:", updatedLeaderboard);
-      } catch (error) {
-        console.error("Failed to update live leaderboard");
-      }
-    }, 500);
-
-    // Move to the next question after a short delay
+    // Add a delay before moving to the next question (gives user time to see the result)
     setTimeout(() => {
       handleNextQuestion();
-    }, 1500);
+    }, 1500); // 1.5 second delay
   };
 
+  // Add a listener for the acknowledgment
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleAnswerReceived = ({ questionId, isCorrect, score }) => {
+      console.log(
+        `Server confirmed answer for question ${questionId}: ${
+          isCorrect ? "correct" : "incorrect"
+        }, score: ${score}`
+      );
+    };
+
+    socket.on("answerReceived", handleAnswerReceived);
+
+    return () => {
+      socket.off("answerReceived", handleAnswerReceived);
+    };
+  }, [socket]);
+
   const currentQuestion = questions[selectedQuestionIndex];
+
+  const createFallbackLeaderboard = () => {
+    if (!location.state?.playerName) return [];
+
+    console.log(
+      `Creating fallback leaderboard for ${location.state.playerName} with score ${score}`
+    );
+
+    // Calculate correct answers based on score (rough estimate)
+    // Each question is worth at least 100 points
+    const estimatedCorrectAnswers = Math.min(
+      Math.ceil(score / 100),
+      questions.length || totalQuestions
+    );
+
+    console.log(
+      `Estimated correct answers: ${estimatedCorrectAnswers} out of ${
+        questions.length || totalQuestions
+      }`
+    );
+
+    return [
+      {
+        playerId: location.state.playerId,
+        playerName: location.state.playerName,
+        score,
+        correctAnswers: estimatedCorrectAnswers,
+        totalQuestions: questions.length || totalQuestions,
+      },
+    ];
+  };
 
   // Show loading state
   if (isLoading) {

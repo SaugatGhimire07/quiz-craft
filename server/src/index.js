@@ -299,7 +299,7 @@ io.on("connection", (socket) => {
     }) => {
       try {
         console.log(
-          `Player ${playerId} submitted answer: ${answer}, correct: ${isCorrect}, score: ${score}`
+          `Player ${playerId} submitted answer for ${questionId}: ${answer}, correct: ${isCorrect}, score: ${score}`
         );
 
         // Find the active session
@@ -310,7 +310,7 @@ io.on("connection", (socket) => {
           return;
         }
 
-        // Find or create a player score record
+        // Find or create player score record
         let playerScore = await PlayerScore.findOne({
           quizId,
           playerId,
@@ -347,11 +347,16 @@ io.on("connection", (socket) => {
         // Save the updated player score
         await playerScore.save();
 
-        console.log(
-          `Updated score for player ${playerId}: ${playerScore.totalScore}`
-        );
+        // Send acknowledgment back to the client
+        socket.emit("answerReceived", {
+          questionId,
+          isCorrect,
+          score: isCorrect ? score : 0,
+        });
       } catch (error) {
         console.error("Error handling answer submission:", error);
+        // Send error message to client
+        socket.emit("answerError", { message: "Failed to save answer" });
       }
     }
   );
@@ -441,7 +446,7 @@ io.on("connection", (socket) => {
     async ({ quizId, sessionId, playerId, totalScore }) => {
       try {
         console.log(
-          `Player ${playerId} completed quiz ${quizId} with total score ${totalScore}`
+          `Player ${playerId} completed quiz ${quizId} with final score ${totalScore}`
         );
 
         // Find the session
@@ -454,78 +459,40 @@ io.on("connection", (socket) => {
           return;
         }
 
-        // Find player score record
-        let playerScore = await PlayerScore.findOne({
+        console.log(`Found session: ${session._id}`);
+
+        // Find and update player score record
+        const playerScore = await PlayerScore.findOneAndUpdate(
+          {
+            quizId,
+            playerId,
+            sessionId: session._id,
+          },
+          {
+            $set: {
+              completed: true,
+              totalScore: totalScore || 0, // Use submitted total score
+            },
+          },
+          { new: true, upsert: true }
+        );
+
+        console.log(
+          `Updated PlayerScore with completed status. Final score: ${playerScore.totalScore}, Answers: ${playerScore.answers.length}`
+        );
+
+        // Immediately verify the player score is saved correctly
+        const verifyScore = await PlayerScore.findOne({
           quizId,
           playerId,
           sessionId: session._id,
         });
 
-        // If no record exists yet, create one
-        if (!playerScore) {
-          playerScore = new PlayerScore({
-            quizId,
-            playerId,
-            sessionId: session._id,
-            answers: [],
-            totalScore: totalScore || 0,
-          });
-        }
-
-        // Mark player as completed
-        playerScore.completed = true;
-
-        // Update final score if provided
-        if (totalScore !== undefined) {
-          playerScore.totalScore = totalScore;
-        }
-
-        await playerScore.save();
         console.log(
-          `Marked player ${playerId} as completed with score ${playerScore.totalScore}`
+          `Verification - PlayerScore found: ${!!verifyScore}, Score: ${
+            verifyScore?.totalScore
+          }, Completed: ${verifyScore?.completed}`
         );
-
-        // Count completed players vs total players
-        const totalPlayers = await Player.countDocuments({
-          sessionId: session._id,
-          isHost: { $ne: true }, // Exclude host
-        });
-
-        const completedCount = await PlayerScore.countDocuments({
-          sessionId: session._id,
-          completed: true,
-        });
-
-        console.log(
-          `${completedCount} out of ${totalPlayers} players have completed the quiz`
-        );
-
-        // Special case for single participant - always mark as complete
-        if (totalPlayers === 1 && completedCount === 1) {
-          console.log(
-            "Single participant has completed the quiz, showing results"
-          );
-
-          // Mark session as all completed
-          await QuizSession.findByIdAndUpdate(session._id, {
-            $set: { allCompleted: true },
-          });
-
-          // Emit to the room
-          io.to(session.pin).emit("showResults", {
-            quizId,
-            sessionId: session._id,
-            allParticipantsFinished: true,
-          });
-
-          io.to(session.pin).emit("allParticipantsFinished");
-          return;
-        }
-
-        // Regular logic for multiple participants
-        if (completedCount >= totalPlayers && totalPlayers > 0) {
-          // Existing code for multiple participants...
-        }
       } catch (error) {
         console.error("Error handling quiz completion:", error);
       }
