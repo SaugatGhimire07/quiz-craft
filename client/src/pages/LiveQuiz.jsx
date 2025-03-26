@@ -32,6 +32,9 @@ const LiveQuiz = () => {
   const [localScores, setLocalScores] = useState({});
   const [questionTimes, setQuestionTimes] = useState({});
 
+  // Define currentQuestion at the top of the component
+  const currentQuestion = questions[selectedQuestionIndex];
+
   // When the component mounts, explicitly reset these values
   useEffect(() => {
     // Reset quiz state when component mounts
@@ -517,7 +520,50 @@ const LiveQuiz = () => {
       const timerId = setTimeout(() => setTimer(timer - 1), 1000);
       return () => clearTimeout(timerId);
     } else if (timer === 0 && !quizComplete) {
-      // Only advance when timer reaches 0 AND questions are loaded AND quiz isn't complete
+      // Record the skipped question before advancing
+      if (currentQuestion && selectedOption === null) {
+        console.log(
+          `Question ${selectedQuestionIndex + 1} skipped due to timeout`
+        );
+
+        // Only set score if there's no existing score for this question
+        if (!localScores[currentQuestion._id]) {
+          setLocalScores((prev) => ({
+            ...prev,
+            [currentQuestion._id]: 0,
+          }));
+        }
+
+        // Record time taken (full time since user didn't answer)
+        const fullTime = currentQuestion.timer;
+        setQuestionTimes((prev) => ({
+          ...prev,
+          [currentQuestion._id]: fullTime,
+        }));
+
+        // Send skipped question data to server only if we don't have a score already
+        if (
+          socket?.connected &&
+          location.state?.playerId &&
+          !localScores[currentQuestion._id]
+        ) {
+          socket.emit("submitAnswer", {
+            quizId,
+            questionId: currentQuestion._id,
+            playerId: location.state.playerId,
+            stableId: location.state?.stableId || location.state?.playerId,
+            answer: "SKIPPED", // Special value to indicate skipped
+            isCorrect: false,
+            timeTaken: fullTime,
+            score: 0,
+            questionText: currentQuestion.questionText,
+            correctOption: currentQuestion.correctOption,
+            options: currentQuestion.options,
+          });
+        }
+      }
+
+      // Now advance to next question
       console.log("Timer reached 0, advancing to next question");
       handleNextQuestion();
     }
@@ -527,6 +573,10 @@ const LiveQuiz = () => {
     quizComplete,
     selectedQuestionIndex,
     selectedOption,
+    currentQuestion,
+    socket,
+    location.state,
+    quizId,
   ]);
 
   // Add this useEffect to monitor important state changes
@@ -551,10 +601,76 @@ const LiveQuiz = () => {
       return;
     }
 
+    // Make sure score for current question is in localScores if answered correctly
+    if (
+      selectedOption === currentQuestion?.correctOption &&
+      !localScores[currentQuestion._id] &&
+      currentQuestion
+    ) {
+      console.log(
+        `Ensuring score for correctly answered question ${currentQuestion._id} is saved locally`
+      );
+
+      // Calculate what the score should have been
+      const maxTime = currentQuestion.timer;
+      const timeTaken = (Date.now() - questionStartTime) / 1000;
+      const timeBonus = Math.max(0, maxTime - timeTaken);
+      const speedMultiplier = 5;
+      const questionScore = 100 + Math.round(timeBonus * speedMultiplier);
+
+      // Save it to localScores
+      setLocalScores((prev) => ({
+        ...prev,
+        [currentQuestion._id]: questionScore,
+      }));
+    }
+
+    // If user manually skips without answering, record it
+    if (selectedOption === null && currentQuestion) {
+      console.log(`Question ${selectedQuestionIndex + 1} skipped manually`);
+
+      // Check if we already have a score for this question (don't overwrite correct answers)
+      if (!localScores[currentQuestion._id]) {
+        // Only set score to 0 if there's no existing score
+        setLocalScores((prev) => ({
+          ...prev,
+          [currentQuestion._id]: 0,
+        }));
+      }
+
+      const timeTaken = (Date.now() - questionStartTime) / 1000;
+      setQuestionTimes((prev) => ({
+        ...prev,
+        [currentQuestion._id]: timeTaken,
+      }));
+
+      // Send skipped question data to server only if we don't have a score already
+      if (
+        socket?.connected &&
+        location.state?.playerId &&
+        !localScores[currentQuestion._id]
+      ) {
+        socket.emit("submitAnswer", {
+          quizId,
+          questionId: currentQuestion._id,
+          playerId: location.state.playerId,
+          stableId: location.state?.stableId || location.state?.playerId,
+          answer: "SKIPPED",
+          isCorrect: false,
+          timeTaken,
+          score: 0,
+          questionText: currentQuestion.questionText,
+          correctOption: currentQuestion.correctOption,
+          options: currentQuestion.options,
+        });
+      }
+    }
+
+    // Rest of the function...
     if (selectedQuestionIndex < questions.length - 1) {
       setSelectedQuestionIndex(selectedQuestionIndex + 1);
     } else {
-      // Quiz completed for this participant
+      // Quiz completed logic...
       console.log(
         "Last question answered, waiting for all participants to finish"
       );
@@ -563,11 +679,14 @@ const LiveQuiz = () => {
       const scoreEntries = Object.entries(localScores);
       console.log(`Score records found: ${scoreEntries.length}`, scoreEntries);
 
-      const finalScore = scoreEntries.reduce((sum, [questionId, score]) => {
+      const localScoreSum = scoreEntries.reduce((sum, [questionId, score]) => {
         console.log(`Question ${questionId}: ${score} points`);
         return sum + score;
       }, 0);
 
+      // Use the higher of current score or calculated score from localScores
+      const finalScore = Math.max(score, localScoreSum);
+      console.log(`Local score sum: ${localScoreSum}, Current score: ${score}`);
       console.log(`Final calculated score: ${finalScore}`);
 
       // Update state with final calculated score
@@ -745,8 +864,6 @@ const LiveQuiz = () => {
       socket.off("answerReceived", handleAnswerReceived);
     };
   }, [socket]);
-
-  const currentQuestion = questions[selectedQuestionIndex];
 
   const createFallbackLeaderboard = () => {
     if (!location.state?.playerName) return [];
