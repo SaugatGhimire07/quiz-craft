@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import DashNav from "../components/DashNav";
 import SidebarNav from "../components/SidebarNav";
-import BackgroundTheme from "../components/BackgroundTheme";
 import { useAuth } from "../context/AuthContext";
 import "../styles/reportPage.css";
 import "../styles/sessionResults.css";
