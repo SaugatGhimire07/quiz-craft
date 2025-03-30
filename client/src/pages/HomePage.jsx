@@ -40,7 +40,7 @@ const HomePage = () => {
         />
       </div>
 
-      <div className="text-container">
+      <div className="text-container" id="features">
         <div className="short-heading">
           <h5>Why you&apos;ll love QuizCraft</h5>
         </div>
@@ -74,7 +74,7 @@ const HomePage = () => {
         </ul>
       </div>
 
-      <div className="text-container">
+      <div className="text-container" id="how-it-works">
         <div className="short-heading">
           <h5>How it works</h5>
         </div>
