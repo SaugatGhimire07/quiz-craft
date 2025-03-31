@@ -45,3 +45,7 @@
 .about-page a:hover {
     text-decoration: underline;
 }
+
+.navbar-with-border {
+  border-bottom: 5px solid #000;
+}

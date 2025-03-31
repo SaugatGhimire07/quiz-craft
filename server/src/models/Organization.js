@@ -6,6 +6,11 @@ const organizationSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
+  orgId: {
+    type: String,
+    unique: true,
+    required: true,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
