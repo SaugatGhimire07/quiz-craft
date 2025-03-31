@@ -2,9 +2,14 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import "../styles/about.css";
 
+//components
+import Navbar from "../components/NavBar";
+
 const AboutPage = () => {
   return (
     <div className="about-page">
+       <Navbar className="navbar-with-border" />
+       
       <h1>About Us</h1>
       <p>
         Welcome to Quiz Craft Platform, a cutting-edge solution designed to transform the way quizzes are created and experienced. Our platform is dedicated to empowering educators, students, and trivia enthusiasts by providing an engaging and interactive learning environment.
