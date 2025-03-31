@@ -18,6 +18,9 @@ import CreateQuiz from "../pages/CreateQuiz";
 import WaitingRoom from "../pages/WaitingRoom";
 import LiveQuiz from "../pages/LiveQuiz"; // Import LiveQuiz component
 import AdminOrganization from "../pages/AdminOrganization";
+import ReportPage from "../pages/ReportPage";
+import QuizResultsDetail from "../pages/QuizResultsDetail";
+import SessionResults from "../pages/SessionResults";
 
 const AppRoutes = () => {
   return (
@@ -113,6 +116,30 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute requireAuth={true}>
               <AdminOrganization />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports"
+          element={
+            <ProtectedRoute>
+              <ReportPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/results/:quizId"
+          element={
+            <ProtectedRoute>
+              <QuizResultsDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/session-results/:sessionId"
+          element={
+            <ProtectedRoute>
+              <SessionResults />
             </ProtectedRoute>
           }
         />

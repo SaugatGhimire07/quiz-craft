@@ -30,6 +30,10 @@ const LiveQuiz = () => {
   const [allParticipantsFinished, setAllParticipantsFinished] = useState(false);
   const [socketReady, setSocketReady] = useState(false);
   const [localScores, setLocalScores] = useState({});
+  const [questionTimes, setQuestionTimes] = useState({});
+
+  // Define currentQuestion at the top of the component
+  const currentQuestion = questions[selectedQuestionIndex];
 
   // When the component mounts, explicitly reset these values
   useEffect(() => {
@@ -516,7 +520,50 @@ const LiveQuiz = () => {
       const timerId = setTimeout(() => setTimer(timer - 1), 1000);
       return () => clearTimeout(timerId);
     } else if (timer === 0 && !quizComplete) {
-      // Only advance when timer reaches 0 AND questions are loaded AND quiz isn't complete
+      // Record the skipped question before advancing
+      if (currentQuestion && selectedOption === null) {
+        console.log(
+          `Question ${selectedQuestionIndex + 1} skipped due to timeout`
+        );
+
+        // Only set score if there's no existing score for this question
+        if (!localScores[currentQuestion._id]) {
+          setLocalScores((prev) => ({
+            ...prev,
+            [currentQuestion._id]: 0,
+          }));
+        }
+
+        // Record time taken (full time since user didn't answer)
+        const fullTime = currentQuestion.timer;
+        setQuestionTimes((prev) => ({
+          ...prev,
+          [currentQuestion._id]: fullTime,
+        }));
+
+        // Send skipped question data to server only if we don't have a score already
+        if (
+          socket?.connected &&
+          location.state?.playerId &&
+          !localScores[currentQuestion._id]
+        ) {
+          socket.emit("submitAnswer", {
+            quizId,
+            questionId: currentQuestion._id,
+            playerId: location.state.playerId,
+            stableId: location.state?.stableId || location.state?.playerId,
+            answer: "SKIPPED", // Special value to indicate skipped
+            isCorrect: false,
+            timeTaken: fullTime,
+            score: 0,
+            questionText: currentQuestion.questionText,
+            correctOption: currentQuestion.correctOption,
+            options: currentQuestion.options,
+          });
+        }
+      }
+
+      // Now advance to next question
       console.log("Timer reached 0, advancing to next question");
       handleNextQuestion();
     }
@@ -526,6 +573,10 @@ const LiveQuiz = () => {
     quizComplete,
     selectedQuestionIndex,
     selectedOption,
+    currentQuestion,
+    socket,
+    location.state,
+    quizId,
   ]);
 
   // Add this useEffect to monitor important state changes
@@ -539,6 +590,10 @@ const LiveQuiz = () => {
     });
   }, [questions.length, selectedQuestionIndex, timer, quizComplete, score]);
 
+  useEffect(() => {
+    console.log(`Score updated to: ${score}, Local scores:`, localScores);
+  }, [score, localScores]);
+
   const handleNextQuestion = () => {
     // Don't proceed if no questions are loaded
     if (!questions.length) {
@@ -546,29 +601,105 @@ const LiveQuiz = () => {
       return;
     }
 
+    // Make sure score for current question is in localScores if answered correctly
+    if (
+      selectedOption === currentQuestion?.correctOption &&
+      !localScores[currentQuestion._id] &&
+      currentQuestion
+    ) {
+      console.log(
+        `Ensuring score for correctly answered question ${currentQuestion._id} is saved locally`
+      );
+
+      // Calculate what the score should have been
+      const maxTime = currentQuestion.timer;
+      const timeTaken = (Date.now() - questionStartTime) / 1000;
+      const timeBonus = Math.max(0, maxTime - timeTaken);
+      const speedMultiplier = 5;
+      const questionScore = 100 + Math.round(timeBonus * speedMultiplier);
+
+      // Save it to localScores
+      setLocalScores((prev) => ({
+        ...prev,
+        [currentQuestion._id]: questionScore,
+      }));
+    }
+
+    // If user manually skips without answering, record it
+    if (selectedOption === null && currentQuestion) {
+      console.log(`Question ${selectedQuestionIndex + 1} skipped manually`);
+
+      // Check if we already have a score for this question (don't overwrite correct answers)
+      if (!localScores[currentQuestion._id]) {
+        // Only set score to 0 if there's no existing score
+        setLocalScores((prev) => ({
+          ...prev,
+          [currentQuestion._id]: 0,
+        }));
+      }
+
+      const timeTaken = (Date.now() - questionStartTime) / 1000;
+      setQuestionTimes((prev) => ({
+        ...prev,
+        [currentQuestion._id]: timeTaken,
+      }));
+
+      // Send skipped question data to server only if we don't have a score already
+      if (
+        socket?.connected &&
+        location.state?.playerId &&
+        !localScores[currentQuestion._id]
+      ) {
+        socket.emit("submitAnswer", {
+          quizId,
+          questionId: currentQuestion._id,
+          playerId: location.state.playerId,
+          stableId: location.state?.stableId || location.state?.playerId,
+          answer: "SKIPPED",
+          isCorrect: false,
+          timeTaken,
+          score: 0,
+          questionText: currentQuestion.questionText,
+          correctOption: currentQuestion.correctOption,
+          options: currentQuestion.options,
+        });
+      }
+    }
+
+    // Rest of the function...
     if (selectedQuestionIndex < questions.length - 1) {
       setSelectedQuestionIndex(selectedQuestionIndex + 1);
     } else {
-      // Quiz completed for this participant
+      // Quiz completed logic...
       console.log(
         "Last question answered, waiting for all participants to finish"
       );
 
-      // Calculate final score from stored answers
-      const finalScore = Object.values(localScores).reduce(
-        (sum, score) => sum + score,
-        0
-      );
-      console.log(
-        `Calculated final score: ${finalScore} from local answers:`,
-        localScores
-      );
+      // Calculate final score from stored answers with more detailed logging
+      const scoreEntries = Object.entries(localScores);
+      console.log(`Score records found: ${scoreEntries.length}`, scoreEntries);
+
+      const localScoreSum = scoreEntries.reduce((sum, [questionId, score]) => {
+        console.log(`Question ${questionId}: ${score} points`);
+        return sum + score;
+      }, 0);
+
+      // Use the higher of current score or calculated score from localScores
+      const finalScore = Math.max(score, localScoreSum);
+      console.log(`Local score sum: ${localScoreSum}, Current score: ${score}`);
+      console.log(`Final calculated score: ${finalScore}`);
 
       // Update state with final calculated score
       setScore(finalScore);
 
       // Mark this participant as complete
       setQuizComplete(true);
+
+      // Calculate total time taken from question times
+      const totalTimeTaken = Object.values(questionTimes).reduce(
+        (sum, time) => sum + time,
+        0
+      );
 
       // Notify the server this participant has completed
       if (socket?.connected && location.state?.playerId) {
@@ -579,16 +710,14 @@ const LiveQuiz = () => {
           playerId: location.state.playerId,
           stableId: location.state?.stableId || location.state?.playerId,
           totalScore: finalScore,
+          timeTaken: totalTimeTaken, // Send the total time taken
         });
-      } else {
-        console.warn("Socket not connected, using local leaderboard only");
-        // Fallback when socket isn't connected
-        fetchLeaderboard();
       }
     }
   };
 
-  // Update your handleOptionSelect function
+  // Update handleOptionSelect function
+
   const handleOptionSelect = (option) => {
     // Don't allow selection if already selected
     if (selectedOption !== null) {
@@ -599,20 +728,37 @@ const LiveQuiz = () => {
     setSelectedOption(option);
     setIsCorrect(isAnswerCorrect);
 
+    // Calculate time taken for this question
+    const timeTaken = (Date.now() - questionStartTime) / 1000;
+
+    // Save this question's time
+    setQuestionTimes((prev) => ({
+      ...prev,
+      [currentQuestion._id]: timeTaken,
+    }));
+
     if (isAnswerCorrect) {
       const maxTime = currentQuestion.timer;
       const timeTaken = (Date.now() - questionStartTime) / 1000;
       const timeBonus = Math.max(0, maxTime - timeTaken);
       const speedMultiplier = 5; // Points per second saved
-
       const questionScore = 100 + Math.round(timeBonus * speedMultiplier);
 
       console.log(
         `Calculated score: ${questionScore} for question ${currentQuestion._id}`
       );
 
+      console.log(
+        `Question ${selectedQuestionIndex + 1}: Scored ${questionScore} points`
+      );
+      console.log(`Current local scores:`, localScores);
+
       // Update total score
-      setScore((prevScore) => prevScore + questionScore);
+      setScore((prevScore) => {
+        const newScore = prevScore + questionScore;
+        console.log(`Total score updated: ${prevScore} → ${newScore}`);
+        return newScore;
+      });
 
       // Try using isConnected from context instead
       const canSendScore =
@@ -622,6 +768,12 @@ const LiveQuiz = () => {
       setLocalScores((prev) => ({
         ...prev,
         [currentQuestion._id]: questionScore,
+      }));
+
+      // Track time taken for each question
+      setQuestionTimes((prev) => ({
+        ...prev,
+        [currentQuestion._id]: timeTaken,
       }));
 
       if (canSendScore) {
@@ -639,14 +791,19 @@ const LiveQuiz = () => {
             answer: option,
             isCorrect: true,
             timeTaken,
-            score: questionScore,
+            score: questionScore, // Make sure this value is correct
+            questionText: currentQuestion.questionText,
+            correctOption: currentQuestion.correctOption,
+            options: currentQuestion.options,
           },
           (response) => {
             if (response && response.success) {
-              console.log("Server confirmed answer was saved successfully");
+              console.log(
+                `Server confirmed score ${questionScore} was saved successfully`
+              );
             } else {
               console.warn(
-                "Server did not confirm answer save. Will rely on local score."
+                `Server did not confirm score. Local score for this question: ${questionScore}`
               );
             }
           }
@@ -655,11 +812,37 @@ const LiveQuiz = () => {
         console.warn("Socket connection issue - caching score locally");
         // Could add local storage caching here if needed
       }
+    } else {
+      // For wrong answers, still send to server but with score 0
+      if (socket?.connected && location.state?.playerId) {
+        socket.emit("submitAnswer", {
+          quizId,
+          questionId: currentQuestion._id,
+          playerId: location.state.playerId,
+          stableId: location.state?.stableId || location.state?.playerId,
+          answer: option,
+          isCorrect: false,
+          timeTaken: (Date.now() - questionStartTime) / 1000,
+          score: 0,
+          // Add these new fields
+          questionText: currentQuestion.questionText,
+          correctOption: currentQuestion.correctOption,
+          options: currentQuestion.options,
+        });
+      }
     }
 
     // Add a delay before moving to the next question (gives user time to see the result)
     setTimeout(() => {
-      handleNextQuestion();
+      // Only move to next question if not the last question
+      if (selectedQuestionIndex < questions.length - 1) {
+        handleNextQuestion();
+      } else {
+        // For the last question, add a bit more delay to ensure score is updated
+        setTimeout(() => {
+          handleNextQuestion();
+        }, 500);
+      }
     }, 1500); // 1.5 second delay
   };
 
@@ -681,8 +864,6 @@ const LiveQuiz = () => {
       socket.off("answerReceived", handleAnswerReceived);
     };
   }, [socket]);
-
-  const currentQuestion = questions[selectedQuestionIndex];
 
   const createFallbackLeaderboard = () => {
     if (!location.state?.playerName) return [];

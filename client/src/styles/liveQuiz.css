@@ -304,7 +304,6 @@
 
 .rank-cell,
 .player-cell,
-.score-cell,
 .answers-cell {
   display: flex;
   align-items: center;
