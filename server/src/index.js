@@ -263,93 +263,81 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on(
-    "submitAnswer",
-    async ({
-      quizId,
-      questionId,
-      playerId,
-      stableId, // Add this parameter
-      answer,
-      isCorrect,
-      timeTaken,
-      score,
-      questionText, // New fields passed from client
-      correctOption,
-      options,
-    }) => {
-      try {
-        console.log(
-          `Player ${playerId} submitted answer for question ${questionId}`
-        );
+  socket.on("submitAnswer", async (data) => {
+    try {
+      console.log("Received submitAnswer event:", data);
 
-        // Find the session
-        const session = await QuizSession.findOne({ quizId, isActive: true });
+      const { quizId, questionId, playerId, answer, isCorrect } = data;
 
-        if (!session) {
-          return socket.emit("answerError", { message: "No active session" });
-        }
-
-        // Find the player - first try by ID, then by stableId if provided
-        let player;
-        if (playerId) {
-          player = await Player.findById(playerId);
-        } else if (stableId) {
-          player = await Player.findOne({ stableId, sessionId: session._id });
-        }
-
-        if (!player) {
-          return socket.emit("answerError", { message: "Player not found" });
-        }
-
-        // Find or create PlayerScore record
-        let playerScore = await PlayerScore.findOne({
-          quizId,
-          playerId: player._id,
-          sessionId: session._id,
-        });
-
-        if (!playerScore) {
-          playerScore = new PlayerScore({
-            quizId,
-            playerId: player._id,
-            sessionId: session._id,
-            answers: [],
-            totalScore: 0,
-          });
-        }
-
-        // Process the answer with enhanced fields
-        playerScore.answers.push({
-          questionId,
-          answer,
-          isCorrect,
-          timeTaken,
-          score: isCorrect ? score || 0 : 0,
-          questionText,
-          correctOption,
-          options,
-        });
-
-        if (isCorrect && score) {
-          playerScore.totalScore += score;
-        }
-
-        await playerScore.save();
-
-        socket.emit("answerReceived", {
-          success: true,
-          questionId,
-          playerId: player._id,
-          isCorrect,
-          score: isCorrect ? score : 0,
-        });
-      } catch (error) {
-        console.error("Error handling answer:", error);
-        socket.emit("answerError", { message: "Failed to process answer" });
+      // Check if the session exists
+      const session = await QuizSession.findOne({ quizId, isActive: true });
+      if (!session) {
+        console.log("No active session found for quiz:", quizId);
+        return socket.emit("answerError", { message: "No active session" });
       }
+
+      // Check if the player exists
+      const player = await Player.findById(playerId);
+      if (!player) {
+        console.log("Player not found:", playerId);
+        return socket.emit("answerError", { message: "Player not found" });
+      }
+
+      // Log before saving the answer
+      console.log("Saving answer for question:", {
+        questionId,
+        answer,
+        isCorrect,
+      });
+
+      // Save the answer
+      let playerScore = await PlayerScore.findOne({
+        quizId,
+        playerId,
+        sessionId: session._id,
+      });
+
+      if (!playerScore) {
+        playerScore = new PlayerScore({
+          quizId,
+          playerId,
+          sessionId: session._id,
+          answers: [],
+          totalScore: 0,
+        });
+      }
+
+      playerScore.answers.push({
+        questionId,
+        answer,
+        isCorrect,
+        timeTaken: data.timeTaken,
+        score: isCorrect ? data.score || 0 : 0,
+        questionText: data.questionText,
+        correctOption: data.correctOption,
+        options: data.options,
+      });
+
+      console.log("Answer saved:", playerScore.answers);
+
+      if (isCorrect && data.score) {
+        playerScore.totalScore += data.score;
+      }
+
+      await playerScore.save();
+
+      socket.emit("answerReceived", {
+        success: true,
+        questionId,
+        playerId,
+        isCorrect,
+        score: isCorrect ? data.score : 0,
+      });
+    } catch (error) {
+      console.error("Error handling submitAnswer:", error);
+      socket.emit("answerError", { message: "Failed to process answer" });
     }
-  );
+  });
 
   // Add this new socket event handler
   socket.on(

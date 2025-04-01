@@ -47,6 +47,11 @@ const playerScoreSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+playerScoreSchema.pre("save", function (next) {
+  console.log("Saving PlayerScore:", this);
+  next();
+});
+
 const PlayerScore = mongoose.model("PlayerScore", playerScoreSchema);
 
 export default PlayerScore;
