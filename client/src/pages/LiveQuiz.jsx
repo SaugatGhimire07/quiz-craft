@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 import { useAuth } from "../hooks/useAuth";
@@ -32,6 +32,7 @@ const LiveQuiz = () => {
   const [localScores, setLocalScores] = useState({});
   const [questionTimes, setQuestionTimes] = useState({});
   const [submittedAnswers, setSubmittedAnswers] = useState({});
+  const scoreRef = useRef(0);
 
   // Define currentQuestion at the top of the component
   const currentQuestion = questions[selectedQuestionIndex];
@@ -48,6 +49,10 @@ const LiveQuiz = () => {
       console.log("LiveQuiz component unmounting");
     };
   }, []);
+
+  useEffect(() => {
+    scoreRef.current = score;
+  }, [score]);
 
   useEffect(() => {
     // Check if coming from waiting room with a valid state
@@ -656,12 +661,16 @@ const LiveQuiz = () => {
         0
       );
 
-      console.log(`Using calculated score as final score: ${finalScore}`);
+      console.log(
+        `Calculated from localScores: ${finalScore}, Current score: ${scoreRef.current}`
+      );
 
-      // Update state with final calculated score
-      setScore(finalScore);
+      // Update state with the higher of the two values to ensure we don't lose points
+      const bestScore = Math.max(finalScore, scoreRef.current);
+      setScore(bestScore);
+      scoreRef.current = bestScore; // Also update the ref
 
-      // Mark this participant as complete
+      // Always mark the quiz as complete regardless of socket status
       setQuizComplete(true);
 
       // Calculate total time taken from question times
@@ -670,17 +679,19 @@ const LiveQuiz = () => {
         0
       );
 
-      // Notify the server this participant has completed
+      // Notify the server this participant has completed (if possible)
       if (socket?.connected && location.state?.playerId) {
-        console.log(`Sending final score ${finalScore} to server`);
+        console.log(`Sending final score ${scoreRef.current} to server`);
         socket.emit("quizComplete", {
           quizId,
           sessionId: location.state?.sessionId,
           playerId: location.state.playerId,
           stableId: location.state?.stableId || location.state?.playerId,
-          totalScore: finalScore, // Using the calculated score from localScores
+          totalScore: scoreRef.current,
           timeTaken: totalTimeTaken,
         });
+      } else {
+        console.warn("Socket not connected, can't send final score to server");
       }
     }
   };
@@ -739,6 +750,7 @@ const LiveQuiz = () => {
       setScore((prevScore) => {
         const newScore = prevScore + questionScore;
         console.log(`Total score updated: ${prevScore} → ${newScore}`);
+        scoreRef.current = newScore; // Update ref immediately for safety
         return newScore;
       });
 
