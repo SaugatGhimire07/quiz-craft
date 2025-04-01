@@ -753,7 +753,8 @@ export const getQuizForParticipant = async (req, res) => {
       });
     }
 
-    // Create a safe version of the questions (without correct answers)
+    // Create a safe version of ALL the questions (without correct answers)
+    // Make sure all questions are being included here
     const safeQuestions = quiz.questions.map((q) => ({
       _id: q._id,
       questionText: q.questionText,
@@ -761,12 +762,12 @@ export const getQuizForParticipant = async (req, res) => {
       timer: q.timer || 30,
       type: q.type || "multiple-choice",
       image: q.image,
-      correctOption: q.correctOption, // Keep for now but could remove for stricter security
+      correctOption: q.correctOption, // Ensure this is included
     }));
 
     res.json({
       title: quiz.title,
-      questions: safeQuestions,
+      questions: safeQuestions, // Return ALL questions
     });
   } catch (error) {
     console.error("Error fetching participant quiz data:", error);

@@ -31,6 +31,7 @@ const LiveQuiz = () => {
   const [socketReady, setSocketReady] = useState(false);
   const [localScores, setLocalScores] = useState({});
   const [questionTimes, setQuestionTimes] = useState({});
+  const [submittedAnswers, setSubmittedAnswers] = useState({});
 
   // Define currentQuestion at the top of the component
   const currentQuestion = questions[selectedQuestionIndex];
@@ -545,7 +546,8 @@ const LiveQuiz = () => {
         if (
           socket?.connected &&
           location.state?.playerId &&
-          !localScores[currentQuestion._id]
+          !localScores[currentQuestion._id] &&
+          !submittedAnswers[currentQuestion._id]
         ) {
           socket.emit("submitAnswer", {
             quizId,
@@ -560,6 +562,12 @@ const LiveQuiz = () => {
             correctOption: currentQuestion.correctOption,
             options: currentQuestion.options,
           });
+
+          // Also mark this question as submitted to prevent duplicate submissions
+          setSubmittedAnswers((prev) => ({
+            ...prev,
+            [currentQuestion._id]: true,
+          }));
         }
       }
 
@@ -578,21 +586,6 @@ const LiveQuiz = () => {
     location.state,
     quizId,
   ]);
-
-  // Add this useEffect to monitor important state changes
-  useEffect(() => {
-    console.log("Quiz state updated:", {
-      questionsLoaded: questions.length,
-      currentQuestion: selectedQuestionIndex,
-      timerValue: timer,
-      quizComplete,
-      score,
-    });
-  }, [questions.length, selectedQuestionIndex, timer, quizComplete, score]);
-
-  useEffect(() => {
-    console.log(`Score updated to: ${score}, Local scores:`, localScores);
-  }, [score, localScores]);
 
   const handleNextQuestion = () => {
     // Don't proceed if no questions are loaded
@@ -623,42 +616,24 @@ const LiveQuiz = () => {
         ...prev,
         [currentQuestion._id]: questionScore,
       }));
-    }
 
-    // If user manually skips without answering, record it
-    if (selectedOption === null && currentQuestion) {
-      console.log(`Question ${selectedQuestionIndex + 1} skipped manually`);
-
-      // Check if we already have a score for this question (don't overwrite correct answers)
-      if (!localScores[currentQuestion._id]) {
-        // Only set score to 0 if there's no existing score
-        setLocalScores((prev) => ({
-          ...prev,
-          [currentQuestion._id]: 0,
-        }));
-      }
-
-      const timeTaken = (Date.now() - questionStartTime) / 1000;
-      setQuestionTimes((prev) => ({
-        ...prev,
-        [currentQuestion._id]: timeTaken,
-      }));
-
-      // Send skipped question data to server only if we don't have a score already
+      // Only send to server if we haven't already sent it
+      // Add this check to prevent duplicate submission
       if (
         socket?.connected &&
         location.state?.playerId &&
-        !localScores[currentQuestion._id]
+        !localScores[currentQuestion._id] &&
+        !submittedAnswers[currentQuestion._id] // This check should prevent duplicates
       ) {
         socket.emit("submitAnswer", {
           quizId,
           questionId: currentQuestion._id,
           playerId: location.state.playerId,
           stableId: location.state?.stableId || location.state?.playerId,
-          answer: "SKIPPED",
-          isCorrect: false,
+          answer: currentQuestion.correctOption,
+          isCorrect: true,
           timeTaken,
-          score: 0,
+          score: questionScore,
           questionText: currentQuestion.questionText,
           correctOption: currentQuestion.correctOption,
           options: currentQuestion.options,
@@ -675,19 +650,13 @@ const LiveQuiz = () => {
         "Last question answered, waiting for all participants to finish"
       );
 
-      // Calculate final score from stored answers with more detailed logging
-      const scoreEntries = Object.entries(localScores);
-      console.log(`Score records found: ${scoreEntries.length}`, scoreEntries);
+      // Calculate final score from localScores - this is the most reliable method
+      const finalScore = Object.values(localScores).reduce(
+        (total, questionScore) => total + questionScore,
+        0
+      );
 
-      const localScoreSum = scoreEntries.reduce((sum, [questionId, score]) => {
-        console.log(`Question ${questionId}: ${score} points`);
-        return sum + score;
-      }, 0);
-
-      // Use the higher of current score or calculated score from localScores
-      const finalScore = Math.max(score, localScoreSum);
-      console.log(`Local score sum: ${localScoreSum}, Current score: ${score}`);
-      console.log(`Final calculated score: ${finalScore}`);
+      console.log(`Using calculated score as final score: ${finalScore}`);
 
       // Update state with final calculated score
       setScore(finalScore);
@@ -709,14 +678,12 @@ const LiveQuiz = () => {
           sessionId: location.state?.sessionId,
           playerId: location.state.playerId,
           stableId: location.state?.stableId || location.state?.playerId,
-          totalScore: finalScore,
-          timeTaken: totalTimeTaken, // Send the total time taken
+          totalScore: finalScore, // Using the calculated score from localScores
+          timeTaken: totalTimeTaken,
         });
       }
     }
   };
-
-  // Update handleOptionSelect function
 
   const handleOptionSelect = (option) => {
     // Don't allow selection if already selected
@@ -724,12 +691,27 @@ const LiveQuiz = () => {
       return;
     }
 
+    // Mark this question as submitted to prevent duplicate submissions
+    setSubmittedAnswers((prev) => ({
+      ...prev,
+      [currentQuestion._id]: true,
+    }));
+
     const isAnswerCorrect = option === currentQuestion.correctOption;
     setSelectedOption(option);
     setIsCorrect(isAnswerCorrect);
 
     // Calculate time taken for this question
     const timeTaken = (Date.now() - questionStartTime) / 1000;
+
+    // Log quiz state when user selects an option
+    console.log("Quiz state on option selection:", {
+      questionIndex: selectedQuestionIndex + 1,
+      totalQuestions: questions.length,
+      timerValue: timer,
+      isCorrect: isAnswerCorrect,
+      timeTaken,
+    });
 
     // Save this question's time
     setQuestionTimes((prev) => ({
